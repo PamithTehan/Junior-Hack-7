@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchFoods, setSearchTerm, setCategory, setCurrentPage } from '../store/slices/foodSlice';
-import { useTranslation } from '../hooks/useTranslation';
+import { useTranslation } from '../Hooks/useTranslation';
 import { useLanguage } from '../Contexts/LanguageContext';
 
 const FoodDatabase = () => {

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { logout } from '../../store/slices/authSlice';
 import ThemeToggle from './ThemeToggle';
 import LanguageToggle from './LanguageToggle';
-import { useTranslation } from '../../hooks/useTranslation';
+import { useTranslation } from '../../Hooks/useTranslation';
 
 const Navbar = () => {
   const navigate = useNavigate();

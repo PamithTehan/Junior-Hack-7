@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { useDispatch, useSelector } from 'react-redux';
 import { login, clearError } from '../../store/slices/authSlice';
-import { useTranslation } from '../../hooks/useTranslation';
+import { useTranslation } from '../../Hooks/useTranslation';
 
 const Login = () => {
   const navigate = useNavigate();

@@ -3,7 +3,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { Link } from 'react-router-dom';
 import { getMe } from '../store/slices/authSlice';
 import { fetchDailyIntake } from '../store/slices/mealSlice';
-import { useTranslation } from '../hooks/useTranslation';
+import { useTranslation } from '../Hooks/useTranslation';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { format } from 'date-fns';
 

@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { useTranslation } from '../hooks/useTranslation';
+import { useTranslation } from '../Hooks/useTranslation';
 
 const HomePage = () => {
   const { isAuthenticated } = useSelector((state) => state.auth);
