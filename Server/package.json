@@ -7,7 +7,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node Server.js",
     "dev": "nodemon Server.js",
-    "seed": "node Utils/seedFoods.js"
+    "seed": "node Utils/seedFoods.js",
+    "build": "echo 'No build step required for Node.js'"
   },
   "keywords": [],
   "author": "",

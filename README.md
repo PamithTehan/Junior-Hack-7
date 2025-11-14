@@ -433,6 +433,23 @@ This project is licensed under the ISC License.
 - MongoDB for database solutions
 - Cloudinary for image hosting
 
+## 🚀 Deployment
+
+### Frontend (Vercel)
+
+The frontend is configured for easy deployment to Vercel. See [VERCEL_DEPLOYMENT.md](./VERCEL_DEPLOYMENT.md) for detailed deployment instructions.
+
+**Quick Deploy to Vercel:**
+1. Push code to GitHub
+2. Import project in Vercel dashboard
+3. Set root directory to `Client/vite-project`
+4. Add environment variable: `VITE_API_URL`
+5. Deploy
+
+### Backend
+
+The backend should be deployed separately to Railway, Render, or Heroku. See [VERCEL_DEPLOYMENT.md](./VERCEL_DEPLOYMENT.md) for backend deployment options.
+
 ## 📞 Support
 
 For support, please open an issue in the repository or contact the development team.
