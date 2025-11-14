@@ -5,6 +5,7 @@ import { getMe } from './store/slices/authSlice';
 import ProtectedRoute from './Utils/ProtectedRoute';
 import { ThemeProvider } from './Contexts/ThemeContext';
 import { LanguageProvider } from './Contexts/LanguageContext';
+import { SocketProvider } from './Contexts/SocketContext';
 
 // Pages
 import HomePage from './Pages/HomePage';
@@ -34,7 +35,8 @@ function App() {
   return (
     <ThemeProvider>
       <LanguageProvider>
-        <Router
+        <SocketProvider>
+          <Router
           future={{
             v7_startTransition: true,
             v7_relativeSplatPath: true,
@@ -103,6 +105,7 @@ function App() {
             <Footer />
           </div>
         </Router>
+        </SocketProvider>
       </LanguageProvider>
     </ThemeProvider>
   );

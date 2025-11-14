@@ -7,12 +7,14 @@ import {
   removeFoodFromIntake,
 } from '../store/slices/mealSlice';
 import { fetchFoods } from '../store/slices/foodSlice';
+import { useSocket } from '../Contexts/SocketContext';
 import { format } from 'date-fns';
 
 const FoodTracker = () => {
   const dispatch = useDispatch();
   const { currentDailyIntake, loading } = useSelector((state) => state.meal);
   const { foods } = useSelector((state) => state.food);
+  const { socket, isConnected } = useSocket();
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [showAddForm, setShowAddForm] = useState(false);
   const { register, handleSubmit, reset, watch } = useForm();
@@ -23,6 +25,33 @@ const FoodTracker = () => {
     dispatch(fetchDailyIntake(selectedDate));
     dispatch(fetchFoods({ limit: 100 }));
   }, [dispatch, selectedDate]);
+
+  // Listen for real-time updates
+  useEffect(() => {
+    if (!socket || !isConnected) return;
+
+    const handleFoodAdded = (data) => {
+      // Refresh intake if it's for the current date
+      if (data.intake && new Date(data.intake.date).toISOString().split('T')[0] === selectedDate) {
+        dispatch(fetchDailyIntake(selectedDate));
+      }
+    };
+
+    const handleFoodRemoved = (data) => {
+      // Refresh intake if it's for the current date
+      if (data.intake && new Date(data.intake.date).toISOString().split('T')[0] === selectedDate) {
+        dispatch(fetchDailyIntake(selectedDate));
+      }
+    };
+
+    socket.on('food:added', handleFoodAdded);
+    socket.on('food:removed', handleFoodRemoved);
+
+    return () => {
+      socket.off('food:added', handleFoodAdded);
+      socket.off('food:removed', handleFoodRemoved);
+    };
+  }, [socket, isConnected, selectedDate, dispatch]);
 
   const onSubmit = async (data) => {
     const foodData = {

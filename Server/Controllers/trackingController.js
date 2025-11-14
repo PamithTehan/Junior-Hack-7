@@ -147,6 +147,15 @@ exports.addFood = async (req, res) => {
     const populatedIntake = await DailyIntake.findById(intake._id)
       .populate('foods.foodId', 'name nutrition servingSize image');
 
+    // Emit real-time update via Socket.IO
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`user:${req.user.id}`).emit('food:added', {
+        intake: populatedIntake,
+        food: populatedIntake.foods[populatedIntake.foods.length - 1],
+      });
+    }
+
     res.status(200).json({
       success: true,
       data: populatedIntake,
@@ -291,6 +300,15 @@ exports.removeFood = async (req, res) => {
 
     const populatedIntake = await DailyIntake.findById(intake._id)
       .populate('foods.foodId', 'name nutrition servingSize image');
+
+    // Emit real-time update via Socket.IO
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`user:${req.user.id}`).emit('food:removed', {
+        intake: populatedIntake,
+        removedFoodId: foodItemId,
+      });
+    }
 
     res.status(200).json({
       success: true,
