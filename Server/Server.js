@@ -25,8 +25,11 @@ const io = new Server(server, {
       'https://nutritionadvisor-plum.vercel.app'
     ],
     credentials: true,
-    methods: ['GET', 'POST']
-  }
+    methods: ['GET', 'POST'],
+    allowedHeaders: ['Authorization', 'Content-Type']
+  },
+  allowEIO3: true, // Allow Engine.IO v3 clients
+  transports: ['websocket', 'polling']
 });
 
 // Socket.IO authentication middleware

@@ -4,12 +4,17 @@ const User = require('../Models/User');
 // Socket.IO authentication middleware
 const authenticateSocket = async (socket, next) => {
   try {
+    // Try multiple ways to get the token
     const token = socket.handshake.auth?.token || 
-                  socket.handshake.headers?.authorization?.split(' ')[1] ||
+                  (socket.handshake.headers?.authorization && socket.handshake.headers.authorization.startsWith('Bearer ') 
+                    ? socket.handshake.headers.authorization.split(' ')[1] 
+                    : null) ||
                   socket.handshake.query?.token;
     
     if (!token) {
       console.log('Socket authentication failed: No token provided');
+      console.log('Handshake auth:', socket.handshake.auth);
+      console.log('Handshake headers:', socket.handshake.headers);
       return next(new Error('Authentication error: No token provided'));
     }
 

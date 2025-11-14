@@ -27,11 +27,14 @@ export const initializeSocket = (token) => {
     auth: {
       token: token
     },
-    transports: ['websocket', 'polling'],
+    transports: ['polling', 'websocket'], // Try polling first, then websocket
     reconnection: true,
     reconnectionDelay: 1000,
     reconnectionAttempts: 5,
+    reconnectionDelayMax: 5000,
+    timeout: 20000,
     autoConnect: true,
+    forceNew: false,
   });
 
   socket.on('connect', () => {
