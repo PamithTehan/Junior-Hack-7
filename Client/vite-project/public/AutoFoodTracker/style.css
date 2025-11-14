@@ -1,0 +1,465 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    --success-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    --card-gradient: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    --shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    --shadow-hover: 0 15px 40px rgba(0, 0, 0, 0.15);
+    --border-radius: 20px;
+    --transition: all 0.3s ease;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: var(--primary-gradient);
+    min-height: 100vh;
+    padding: 20px;
+    color: #333;
+}
+
+.container {
+    max-width: 900px;
+    margin: 0 auto;
+    background: white;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+header {
+    background: var(--primary-gradient);
+    color: white;
+    padding: 40px 30px;
+    text-align: center;
+}
+
+header h1 {
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.subtitle {
+    font-size: 1.1rem;
+    opacity: 0.95;
+}
+
+main {
+    padding: 40px 30px;
+}
+
+/* Upload Section */
+.upload-section {
+    margin-bottom: 30px;
+}
+
+.upload-area {
+    border: 3px dashed #667eea;
+    border-radius: var(--border-radius);
+    padding: 60px 30px;
+    text-align: center;
+    background: var(--card-gradient);
+    cursor: pointer;
+    transition: var(--transition);
+    position: relative;
+    overflow: hidden;
+}
+
+.upload-area::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transition: left 0.5s;
+}
+
+.upload-area:hover::before {
+    left: 100%;
+}
+
+.upload-area:hover {
+    border-color: #764ba2;
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-hover);
+    background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%);
+}
+
+.upload-area.dragover {
+    border-color: #764ba2;
+    background: linear-gradient(135deg, #e8ebff 0%, #f0f2ff 100%);
+    transform: scale(1.02);
+}
+
+.upload-icon {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 20px;
+    color: #667eea;
+    stroke-width: 1.5;
+}
+
+.upload-content h2 {
+    color: #333;
+    margin-bottom: 10px;
+    font-size: 1.5rem;
+}
+
+.upload-content p {
+    color: #666;
+    font-size: 1rem;
+}
+
+/* Loading Section */
+.loading-section {
+    text-align: center;
+    padding: 60px 30px;
+}
+
+.loader {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+
+.spinner {
+    width: 60px;
+    height: 60px;
+    border: 5px solid #f3f3f3;
+    border-top: 5px solid #667eea;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+#loadingText {
+    font-size: 1.1rem;
+    color: #666;
+    font-weight: 500;
+}
+
+/* Processing Section */
+.processing-section {
+    padding: 40px 30px;
+}
+
+.processing-steps {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.step {
+    flex: 1;
+    min-width: 150px;
+    text-align: center;
+    opacity: 0.4;
+    transition: var(--transition);
+}
+
+.step.active {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+.step-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: var(--primary-gradient);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin: 0 auto 10px;
+    box-shadow: var(--shadow);
+}
+
+.step.active .step-icon {
+    background: var(--success-gradient);
+    animation: pulse 1.5s ease infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+}
+
+.step p {
+    color: #666;
+    font-size: 0.9rem;
+    margin-top: 10px;
+}
+
+/* Results Section */
+.results-section {
+    animation: slideUp 0.5s ease;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.image-preview {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.image-preview img {
+    max-width: 100%;
+    max-height: 300px;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    object-fit: contain;
+}
+
+.recognition-result {
+    background: var(--card-gradient);
+    padding: 25px;
+    border-radius: var(--border-radius);
+    margin-bottom: 25px;
+    text-align: center;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+}
+
+.recognition-result h3 {
+    color: #666;
+    font-size: 1rem;
+    margin-bottom: 15px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.food-name {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 10px;
+    background: var(--primary-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.confidence {
+    font-size: 1rem;
+    color: #666;
+    padding: 8px 20px;
+    background: #f0f0f0;
+    border-radius: 20px;
+    display: inline-block;
+}
+
+.nutrition-card {
+    background: var(--card-gradient);
+    padding: 30px;
+    border-radius: var(--border-radius);
+    margin-bottom: 25px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+}
+
+.nutrition-card h3 {
+    color: #333;
+    margin-bottom: 20px;
+    font-size: 1.5rem;
+    text-align: center;
+}
+
+.nutrition-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+}
+
+.nutrition-item {
+    background: white;
+    padding: 20px;
+    border-radius: 15px;
+    text-align: center;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+    transition: var(--transition);
+}
+
+.nutrition-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.nutrition-label {
+    font-size: 0.9rem;
+    color: #666;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.nutrition-value {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.nutrition-unit {
+    font-size: 0.8rem;
+    color: #999;
+}
+
+/* Buttons */
+.btn-reset {
+    width: 100%;
+    padding: 15px 30px;
+    background: var(--primary-gradient);
+    color: white;
+    border: none;
+    border-radius: var(--border-radius);
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    box-shadow: var(--shadow);
+}
+
+.btn-reset:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-hover);
+}
+
+.btn-reset:active {
+    transform: translateY(-1px);
+}
+
+/* Error Section */
+.error-section {
+    text-align: center;
+    padding: 40px 30px;
+    animation: shake 0.5s ease;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-10px); }
+    75% { transform: translateX(10px); }
+}
+
+.error-message {
+    background: #fee;
+    color: #c33;
+    padding: 20px;
+    border-radius: var(--border-radius);
+    margin-bottom: 20px;
+    border-left: 4px solid #c33;
+    font-size: 1rem;
+}
+
+/* Footer */
+footer {
+    background: #f8f9fa;
+    padding: 20px;
+    text-align: center;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    header h1 {
+        font-size: 2rem;
+    }
+
+    .subtitle {
+        font-size: 1rem;
+    }
+
+    main {
+        padding: 30px 20px;
+    }
+
+    .upload-area {
+        padding: 40px 20px;
+    }
+
+    .upload-icon {
+        width: 60px;
+        height: 60px;
+    }
+
+    .processing-steps {
+        flex-direction: column;
+    }
+
+    .step {
+        width: 100%;
+    }
+
+    .nutrition-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .food-name {
+        font-size: 1.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    body {
+        padding: 10px;
+    }
+
+    .container {
+        border-radius: 15px;
+    }
+
+    header {
+        padding: 30px 20px;
+    }
+
+    header h1 {
+        font-size: 1.75rem;
+    }
+
+    .nutrition-grid {
+        grid-template-columns: 1fr;
+    }
+}
+

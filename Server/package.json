@@ -11,6 +11,7 @@
     "seed:csv": "node Utils/seedFoodsFromCSV.js",
     "seed:master": "node Utils/seedMaster.js",
     "clear:users": "node Utils/clearUsers.js",
+    "clear:foods": "node Utils/clearFoods.js",
     "build": "echo 'No build step required for Node.js'"
   },
   "keywords": [],

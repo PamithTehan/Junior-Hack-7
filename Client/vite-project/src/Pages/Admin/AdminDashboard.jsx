@@ -20,13 +20,22 @@ const AdminDashboard = () => {
   
   // Search and filter states
   const [foodSearch, setFoodSearch] = useState('');
-  const [foodCategory, setFoodCategory] = useState('');
+  const [foodType, setFoodType] = useState('');
   const [recipeSearch, setRecipeSearch] = useState('');
   const [recipeCategory, setRecipeCategory] = useState('');
   const [selectedFood, setSelectedFood] = useState(null);
   const [selectedRecipe, setSelectedRecipe] = useState(null);
+  const [showAddFoodModal, setShowAddFoodModal] = useState(false);
+  const [newFood, setNewFood] = useState({
+    name: { en: '', si: '', ta: '' },
+    type: '',
+    nutrition: { calories: 0, protein: 0, carbohydrates: 0, fat: 0, fiber: 0 },
+    servingSize: '100g',
+    image: null,
+  });
 
-  const categories = ['rice', 'curry', 'dessert', 'snack', 'beverage', 'bread', 'other'];
+  const foodTypes = ['fruits', 'vegetables', 'grains', 'proteins', 'dairy', 'beverages', 'nuts-seeds', 'legumes', 'herbs', 'other'];
+  const recipeCategories = ['rice', 'curry', 'dessert', 'snack', 'beverage', 'bread', 'other'];
 
   const fetchStats = async () => {
     try {
@@ -54,21 +63,17 @@ const AdminDashboard = () => {
     try {
       const params = new URLSearchParams();
       if (foodSearch) params.append('search', foodSearch);
-      if (foodCategory) params.append('category', foodCategory);
+      if (foodType) params.append('type', foodType);
       params.append('limit', '100');
       
       const response = await axios.get(`${API_URL}/foods?${params.toString()}`);
-      // Filter out recipes (isTraditional with long description)
-      const foodsOnly = response.data.data.filter(
-        (item) => !(item.isTraditional && item.description && item.description.length > 50)
-      );
-      setFoods(foodsOnly);
+      setFoods(response.data.data);
     } catch (error) {
       console.error('Error fetching foods:', error);
     } finally {
       setLoading(false);
     }
-  }, [foodSearch, foodCategory]);
+  }, [foodSearch, foodType]);
 
   const fetchRecipes = useCallback(async () => {
     setLoading(true);
@@ -78,12 +83,8 @@ const AdminDashboard = () => {
       if (recipeCategory) params.append('category', recipeCategory);
       params.append('limit', '100');
       
-      const response = await axios.get(`${API_URL}/foods?${params.toString()}`);
-      // Filter for recipes only (isTraditional with long description)
-      const recipesOnly = response.data.data.filter(
-        (item) => item.isTraditional && item.description && item.description.length > 50
-      );
-      setRecipes(recipesOnly);
+      const response = await axios.get(`${API_URL}/recipes?${params.toString()}`);
+      setRecipes(response.data.data);
     } catch (error) {
       console.error('Error fetching recipes:', error);
     } finally {
@@ -160,10 +161,43 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleAddFood = async (e) => {
+    e.preventDefault();
+    try {
+      const formData = new FormData();
+      formData.append('name', JSON.stringify(newFood.name));
+      formData.append('type', newFood.type);
+      formData.append('nutrition', JSON.stringify(newFood.nutrition));
+      formData.append('servingSize', newFood.servingSize);
+      if (newFood.image) {
+        formData.append('image', newFood.image);
+      }
+
+      await axios.post(`${API_URL}/foods`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      alert('Food added successfully!');
+      setShowAddFoodModal(false);
+      setNewFood({
+        name: { en: '', si: '', ta: '' },
+        type: '',
+        nutrition: { calories: 0, protein: 0, carbohydrates: 0, fat: 0, fiber: 0 },
+        servingSize: '100g',
+        image: null,
+      });
+      fetchFoods();
+    } catch (error) {
+      alert('Error adding food: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
   const handleDeleteRecipe = async (recipeId) => {
     if (!window.confirm('Are you sure you want to delete this recipe?')) return;
     try {
-      await axios.delete(`${API_URL}/foods/${recipeId}`);
+      await axios.delete(`${API_URL}/recipes/${recipeId}`);
       fetchRecipes();
       alert('Recipe deleted successfully');
     } catch (error) {
@@ -414,7 +448,7 @@ const AdminDashboard = () => {
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Foods Management</h2>
               <button
-                onClick={() => navigate('/foods')}
+                onClick={() => setShowAddFoodModal(true)}
                 className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors"
               >
                 Add Food
@@ -434,14 +468,14 @@ const AdminDashboard = () => {
               </div>
               <div>
                 <select
-                  value={foodCategory}
-                  onChange={(e) => setFoodCategory(e.target.value)}
+                  value={foodType}
+                  onChange={(e) => setFoodType(e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100"
                 >
-                  <option value="">All Categories</option>
-                  {categories.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                  <option value="">All Types</option>
+                  {foodTypes.map((type) => (
+                    <option key={type} value={type}>
+                      {type.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
                     </option>
                   ))}
                 </select>
@@ -458,7 +492,7 @@ const AdminDashboard = () => {
                   <thead>
                     <tr className="border-b border-gray-200 dark:border-gray-700">
                       <th className="text-left py-3 px-4 text-gray-700 dark:text-gray-300">Name</th>
-                      <th className="text-left py-3 px-4 text-gray-700 dark:text-gray-300">Category</th>
+                      <th className="text-left py-3 px-4 text-gray-700 dark:text-gray-300">Type</th>
                       <th className="text-left py-3 px-4 text-gray-700 dark:text-gray-300">Calories</th>
                       <th className="text-left py-3 px-4 text-gray-700 dark:text-gray-300">Status</th>
                       <th className="text-left py-3 px-4 text-gray-700 dark:text-gray-300">Actions</th>
@@ -482,7 +516,9 @@ const AdminDashboard = () => {
                             </button>
                           </div>
                         </td>
-                        <td className="py-3 px-4 text-gray-800 dark:text-gray-100">{food.category}</td>
+                        <td className="py-3 px-4 text-gray-800 dark:text-gray-100">
+                          {food.type ? food.type.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') : 'N/A'}
+                        </td>
                         <td className="py-3 px-4 text-gray-800 dark:text-gray-100">{food.nutrition?.calories || 0} kcal</td>
                         <td className="py-3 px-4">
                           {food.isApproved === false ? (
@@ -550,7 +586,7 @@ const AdminDashboard = () => {
                   className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100"
                 >
                   <option value="">All Categories</option>
-                  {categories.map((cat) => (
+                  {recipeCategories.map((cat) => (
                     <option key={cat} value={cat}>
                       {cat.charAt(0).toUpperCase() + cat.slice(1)}
                     </option>
@@ -776,7 +812,7 @@ const AdminDashboard = () => {
                 <img src={selectedFood.image} alt={selectedFood.name?.en} className="w-full h-64 object-cover rounded-lg mb-4" />
               )}
               <div className="space-y-2">
-                <p><strong>Category:</strong> {selectedFood.category}</p>
+                <p><strong>Type:</strong> {selectedFood.type ? selectedFood.type.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') : 'N/A'}</p>
                 <p><strong>Description:</strong> {selectedFood.description || 'N/A'}</p>
                 <p><strong>Serving Size:</strong> {selectedFood.servingSize}</p>
                 <div className="mt-4">
@@ -784,7 +820,7 @@ const AdminDashboard = () => {
                   <ul className="list-disc list-inside mt-2">
                     <li>Calories: {selectedFood.nutrition?.calories || 0} kcal</li>
                     <li>Protein: {selectedFood.nutrition?.protein || 0} g</li>
-                    <li>Carbs: {selectedFood.nutrition?.carbs || 0} g</li>
+                    <li>Carbohydrates: {selectedFood.nutrition?.carbohydrates || 0} g</li>
                     <li>Fat: {selectedFood.nutrition?.fat || 0} g</li>
                     <li>Fiber: {selectedFood.nutrition?.fiber || 0} g</li>
                   </ul>
@@ -832,6 +868,164 @@ const AdminDashboard = () => {
                   )}
                 </p>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Add Food Modal */}
+        {showAddFoodModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowAddFoodModal(false)}>
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Add New Food</h3>
+                <button onClick={() => setShowAddFoodModal(false)} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <form onSubmit={handleAddFood} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name (English) *</label>
+                  <input
+                    type="text"
+                    required
+                    value={newFood.name.en}
+                    onChange={(e) => setNewFood({ ...newFood, name: { ...newFood.name, en: e.target.value } })}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name (Sinhala)</label>
+                  <input
+                    type="text"
+                    value={newFood.name.si}
+                    onChange={(e) => setNewFood({ ...newFood, name: { ...newFood.name, si: e.target.value } })}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name (Tamil)</label>
+                  <input
+                    type="text"
+                    value={newFood.name.ta}
+                    onChange={(e) => setNewFood({ ...newFood, name: { ...newFood.name, ta: e.target.value } })}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Food Type *</label>
+                  <select
+                    required
+                    value={newFood.type}
+                    onChange={(e) => setNewFood({ ...newFood, type: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100"
+                  >
+                    <option value="">Select Type</option>
+                    {foodTypes.map((type) => (
+                      <option key={type} value={type}>
+                        {type.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Calories (kcal) *</label>
+                    <input
+                      type="number"
+                      required
+                      min="0"
+                      step="0.1"
+                      value={newFood.nutrition.calories}
+                      onChange={(e) => setNewFood({ ...newFood, nutrition: { ...newFood.nutrition, calories: parseFloat(e.target.value) || 0 } })}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Protein (g) *</label>
+                    <input
+                      type="number"
+                      required
+                      min="0"
+                      step="0.1"
+                      value={newFood.nutrition.protein}
+                      onChange={(e) => setNewFood({ ...newFood, nutrition: { ...newFood.nutrition, protein: parseFloat(e.target.value) || 0 } })}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Carbohydrates (g) *</label>
+                    <input
+                      type="number"
+                      required
+                      min="0"
+                      step="0.1"
+                      value={newFood.nutrition.carbohydrates}
+                      onChange={(e) => setNewFood({ ...newFood, nutrition: { ...newFood.nutrition, carbohydrates: parseFloat(e.target.value) || 0 } })}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fat (g) *</label>
+                    <input
+                      type="number"
+                      required
+                      min="0"
+                      step="0.1"
+                      value={newFood.nutrition.fat}
+                      onChange={(e) => setNewFood({ ...newFood, nutrition: { ...newFood.nutrition, fat: parseFloat(e.target.value) || 0 } })}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fiber (g) *</label>
+                    <input
+                      type="number"
+                      required
+                      min="0"
+                      step="0.1"
+                      value={newFood.nutrition.fiber}
+                      onChange={(e) => setNewFood({ ...newFood, nutrition: { ...newFood.nutrition, fiber: parseFloat(e.target.value) || 0 } })}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Serving Size</label>
+                    <input
+                      type="text"
+                      value={newFood.servingSize}
+                      onChange={(e) => setNewFood({ ...newFood, servingSize: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100"
+                      placeholder="100g"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Image</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setNewFood({ ...newFood, image: e.target.files[0] })}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100"
+                  />
+                </div>
+                <div className="flex justify-end space-x-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddFoodModal(false)}
+                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                  >
+                    Add Food
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}

@@ -91,6 +91,7 @@ app.use(cors({
 app.use('/api/auth', require('./Routes/authRoutes'));
 app.use('/api/admin', require('./Routes/adminRoutes'));
 app.use('/api/foods', require('./Routes/foodRoutes'));
+app.use('/api/recipes', require('./Routes/recipeRoutes'));
 app.use('/api/mealplans', require('./Routes/mealPlanRoutes'));
 app.use('/api/tracking', require('./Routes/trackingRoutes'));
 app.use('/api/upload', require('./Routes/uploadRoutes'));

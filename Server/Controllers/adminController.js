@@ -1,6 +1,7 @@
 const Admin = require('../Models/Admin');
 const User = require('../Models/User');
-const FoodItem = require('../Models/FoodItem');
+const Food = require('../Models/Food');
+const Recipe = require('../Models/Recipe');
 const jwt = require('jsonwebtoken');
 
 // Generate JWT Token
@@ -222,10 +223,10 @@ exports.getMe = async (req, res) => {
 exports.getStats = async (req, res) => {
   try {
     const totalUsers = await User.countDocuments({ role: 'user' });
-    const totalFoods = await FoodItem.countDocuments();
-    const totalRecipes = await FoodItem.countDocuments({ isTraditional: true, description: { $exists: true, $ne: '' } });
+    const totalFoods = await Food.countDocuments();
+    const totalRecipes = await Recipe.countDocuments();
     const pendingApprovals = await Admin.countDocuments({ isApproved: false });
-    const pendingRecipes = await FoodItem.countDocuments({ isApproved: false });
+    const pendingRecipes = await Recipe.countDocuments({ isApproved: false });
 
     res.status(200).json({
       success: true,
@@ -431,23 +432,23 @@ exports.removeAdmin = async (req, res) => {
 // @access  Private (Admin/Master)
 exports.approveRecipe = async (req, res) => {
   try {
-    const food = await FoodItem.findById(req.params.id);
-    if (!food) {
+    const recipe = await Recipe.findById(req.params.id);
+    if (!recipe) {
       return res.status(404).json({
         success: false,
-        message: 'Food/Recipe not found',
+        message: 'Recipe not found',
       });
     }
 
-    food.isApproved = true;
-    food.approvedBy = req.admin.id;
-    food.approvedAt = new Date();
-    await food.save();
+    recipe.isApproved = true;
+    recipe.approvedBy = req.admin.id;
+    recipe.approvedAt = new Date();
+    await recipe.save();
 
     res.status(200).json({
       success: true,
       message: 'Recipe approved successfully',
-      data: food,
+      data: recipe,
     });
   } catch (error) {
     res.status(500).json({

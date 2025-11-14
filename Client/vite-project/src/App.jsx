@@ -18,6 +18,7 @@ import FoodTracker from './Pages/FoodTracker';
 import Recipes from './Pages/Recipes';
 import Profile from './Pages/Profile';
 import NutritionalCalculator from './Pages/NutritionalCalculator';
+import Scan from './Pages/Scan';
 import AdminLogin from './Pages/Admin/AdminLogin';
 import AdminSignup from './Pages/Admin/AdminSignup';
 import AdminDashboard from './Pages/Admin/AdminDashboard';
@@ -105,6 +106,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            <Route path="/scan" element={<Scan />} />
             <Route
               path="/profile"
               element={

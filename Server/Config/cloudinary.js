@@ -63,5 +63,15 @@ const uploadToCloudinary = (buffer, folder = 'sri-lankan-nutrition', options = {
   });
 };
 
-module.exports = { cloudinary, upload, uploadToCloudinary };
+// Helper function to delete from Cloudinary
+const deleteFromCloudinary = async (publicId) => {
+  try {
+    const result = await cloudinary.uploader.destroy(publicId);
+    return result;
+  } catch (error) {
+    throw error;
+  }
+};
+
+module.exports = { cloudinary, upload, uploadToCloudinary, deleteFromCloudinary };
 

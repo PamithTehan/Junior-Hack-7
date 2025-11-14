@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto Food Nutrition Tracker</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🍎 Auto Food Nutrition Tracker</h1>
+            <p class="subtitle">Just upload an image - we'll do the rest!</p>
+        </header>
+
+        <main>
+            <!-- Upload Section -->
+            <div class="upload-section" id="uploadSection">
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-content">
+                        <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        <h2>Drag & Drop Your Food Image</h2>
+                        <p>or click to browse</p>
+                        <input type="file" id="fileInput" accept="image/*" hidden>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loading Section -->
+            <div class="loading-section" id="loadingSection" style="display: none;">
+                <div class="loader">
+                    <div class="spinner"></div>
+                    <p id="loadingText">Loading TensorFlow.js model...</p>
+                </div>
+            </div>
+
+            <!-- Processing Section -->
+            <div class="processing-section" id="processingSection" style="display: none;">
+                <div class="processing-steps">
+                    <div class="step active" id="step1">
+                        <div class="step-icon">1</div>
+                        <p>Recognizing food...</p>
+                    </div>
+                    <div class="step" id="step2">
+                        <div class="step-icon">2</div>
+                        <p>Fetching nutrition data...</p>
+                    </div>
+                    <div class="step" id="step3">
+                        <div class="step-icon">3</div>
+                        <p>Displaying results...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results Section -->
+            <div class="results-section" id="resultsSection" style="display: none;">
+                <div class="image-preview">
+                    <img id="previewImage" src="" alt="Food preview">
+                </div>
+                
+                <div class="recognition-result">
+                    <h3>Recognized Food</h3>
+                    <div class="food-name" id="foodName">-</div>
+                    <div class="confidence" id="confidence">-</div>
+                </div>
+
+                <div class="nutrition-card">
+                    <h3>Nutrition Information</h3>
+                    <div class="nutrition-grid" id="nutritionGrid">
+                        <!-- Nutrition data will be inserted here -->
+                    </div>
+                </div>
+
+                <button class="btn-reset" id="resetBtn">Analyze Another Image</button>
+            </div>
+
+            <!-- Error Section -->
+            <div class="error-section" id="errorSection" style="display: none;">
+                <div class="error-message" id="errorMessage"></div>
+                <button class="btn-reset" id="errorResetBtn">Try Again</button>
+            </div>
+        </main>
+
+        <footer>
+            <p>Powered by TensorFlow.js & USDA FoodData Central API</p>
+        </footer>
+    </div>
+
+    <!-- TensorFlow.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.0/dist/mobilenet.min.js"></script>
+    
+    <!-- Main Script -->
+    <script src="script.js"></script>
+</body>
+</html>
+
