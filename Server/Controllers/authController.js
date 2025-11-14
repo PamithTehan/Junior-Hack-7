@@ -205,7 +205,35 @@ exports.register = async (req, res) => {
       },
     };
 
-    const user = await User.create(userData);
+    // Create user with retry logic for duplicate userId errors
+    let user;
+    let retries = 0;
+    const maxRetries = 3;
+    
+    while (retries < maxRetries) {
+      try {
+        user = await User.create(userData);
+        break; // Success, exit loop
+      } catch (createError) {
+        // Handle duplicate userId error
+        if (createError.code === 11000 && createError.keyPattern && createError.keyPattern.userId) {
+          retries++;
+          if (retries >= maxRetries) {
+            // Last resort: use timestamp-based userId
+            userData.userId = `US-${Date.now().toString().slice(-8)}-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
+            user = await User.create(userData);
+            break;
+          }
+          // Clear userId to let pre-save hook regenerate it
+          userData.userId = undefined;
+          // Add small delay before retry
+          await new Promise(resolve => setTimeout(resolve, 100 * retries));
+        } else {
+          // Not a userId duplicate error, rethrow
+          throw createError;
+        }
+      }
+    }
 
     // Return success response
     res.status(201).json({

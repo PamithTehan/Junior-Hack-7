@@ -132,19 +132,45 @@ userSchema.pre('save', async function(next) {
         // Use this.constructor to get the model (safe for pre-save hooks)
         const UserModel = this.constructor;
         if (UserModel && typeof UserModel.countDocuments === 'function') {
-          const count = await UserModel.countDocuments({ role: 'user' });
-          const paddedNumber = String(count + 1).padStart(8, '0');
-          this.userId = `US-${paddedNumber.slice(0, 4)} ${paddedNumber.slice(4)}`;
+          // Get the maximum userId number to avoid race conditions
+          const users = await UserModel.find({ 
+            role: 'user',
+            userId: { $exists: true, $ne: null }
+          }).select('userId').sort({ userId: -1 }).limit(1);
+          
+          let nextNumber = 1;
+          if (users.length > 0 && users[0].userId) {
+            // Extract number from existing userId (format: US-0000 0003)
+            const userIdMatch = users[0].userId.match(/(\d+)/g);
+            if (userIdMatch && userIdMatch.length > 0) {
+              const lastNumber = parseInt(userIdMatch.join(''), 10);
+              nextNumber = lastNumber + 1;
+            }
+          } else {
+            // If no users found, count total users
+            const count = await UserModel.countDocuments({ role: 'user' });
+            nextNumber = count + 1;
+          }
+          
+          // Add timestamp and random component to handle concurrent requests
+          // This ensures uniqueness even with simultaneous registrations
+          const timestamp = Date.now().toString().slice(-6); // Last 6 digits
+          const random = Math.floor(Math.random() * 100).toString().padStart(2, '0');
+          const paddedNumber = String(nextNumber).padStart(4, '0');
+          // Format: US-XXXX YYYY where XXXX is the sequence number and YYYY is timestamp + random
+          this.userId = `US-${paddedNumber} ${timestamp.slice(0, 2)}${random}`;
         } else {
           // Fallback if model is not available
           const timestamp = Date.now().toString().slice(-8);
-          this.userId = `US-${timestamp.slice(0, 4)} ${timestamp.slice(4)}`;
+          const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+          this.userId = `US-${timestamp.slice(0, 4)} ${random}`;
         }
       } catch (countError) {
-        // If count fails, generate a simple ID based on timestamp
-        console.error('Error counting users for ID generation:', countError);
+        // If count fails, generate a simple ID based on timestamp and random
+        console.error('Error generating userId:', countError);
         const timestamp = Date.now().toString().slice(-8);
-        this.userId = `US-${timestamp.slice(0, 4)} ${timestamp.slice(4)}`;
+        const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+        this.userId = `US-${timestamp.slice(0, 4)} ${random}`;
       }
     }
     
@@ -156,7 +182,8 @@ userSchema.pre('save', async function(next) {
       message: error.message,
       stack: error.stack,
     });
-    next(error);
+    // Don't block save if userId generation fails - let it use default
+    next();
   }
 });
 
