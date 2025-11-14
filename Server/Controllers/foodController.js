@@ -19,6 +19,15 @@ exports.getFoods = async (req, res) => {
       query.category = category;
     }
 
+    // Only show approved foods to regular users (admins can see all)
+    // Check if user is admin/master (either through req.user or req.adminUser)
+    const isAdmin = (req.user && (req.user.role === 'admin' || req.user.role === 'master')) || 
+                    (req.adminUser && (req.adminUser.role === 'admin' || req.adminUser.role === 'master')) ||
+                    req.isAdmin;
+    if (!isAdmin) {
+      query.isApproved = { $ne: false }; // Show approved foods (default is true)
+    }
+
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     const foods = await FoodItem.find(query)

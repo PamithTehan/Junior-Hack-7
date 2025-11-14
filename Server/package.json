@@ -8,6 +8,9 @@
     "start": "node Server.js",
     "dev": "nodemon Server.js",
     "seed": "node Utils/seedFoods.js",
+    "seed:csv": "node Utils/seedFoodsFromCSV.js",
+    "seed:master": "node Utils/seedMaster.js",
+    "clear:users": "node Utils/clearUsers.js",
     "build": "echo 'No build step required for Node.js'"
   },
   "keywords": [],
@@ -28,6 +31,7 @@
     "socket.io": "^4.8.1"
   },
   "devDependencies": {
+    "clinic": "^13.0.0",
     "nodemon": "^3.1.11"
   }
 }

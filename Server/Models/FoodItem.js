@@ -52,6 +52,19 @@ const foodItemSchema = new mongoose.Schema({
     default: true,
   },
   tags: [{ type: String }], // ['diabetes-friendly', 'heart-healthy', 'low-calorie']
+  isApproved: {
+    type: Boolean,
+    default: true, // Existing foods are approved by default
+  },
+  approvedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User', // Can be Admin or Master
+    default: null,
+  },
+  approvedAt: {
+    type: Date,
+    default: null,
+  },
 }, {
   timestamps: true,
 });

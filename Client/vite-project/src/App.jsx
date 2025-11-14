@@ -17,10 +17,15 @@ import MealPlanner from './Pages/MealPlanner';
 import FoodTracker from './Pages/FoodTracker';
 import Recipes from './Pages/Recipes';
 import Profile from './Pages/Profile';
+import NutritionalCalculator from './Pages/NutritionalCalculator';
+import AdminLogin from './Pages/Admin/AdminLogin';
+import AdminSignup from './Pages/Admin/AdminSignup';
+import AdminDashboard from './Pages/Admin/AdminDashboard';
 
 // Layout
 import Navbar from './Components/Common/Navbar';
 import Footer from './Components/Common/Footer';
+import ProtectedAdminRoute from './Utils/ProtectedAdminRoute';
 
 function App() {
   const dispatch = useDispatch();
@@ -93,11 +98,29 @@ function App() {
               }
             />
             <Route
+              path="/calculator"
+              element={
+                <ProtectedRoute>
+                  <NutritionalCalculator />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/profile"
               element={
                 <ProtectedRoute>
                   <Profile />
                 </ProtectedRoute>
+              }
+            />
+            <Route path="/admin/login" element={<AdminLogin />} />
+            <Route path="/admin/signup" element={<AdminSignup />} />
+            <Route
+              path="/admin/dashboard"
+              element={
+                <ProtectedAdminRoute>
+                  <AdminDashboard />
+                </ProtectedAdminRoute>
               }
             />
           </Routes>

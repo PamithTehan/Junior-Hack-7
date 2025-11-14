@@ -13,10 +13,19 @@ const healthProfileSchema = new mongoose.Schema({
 }, { _id: false });
 
 const userSchema = new mongoose.Schema({
+  firstName: {
+    type: String,
+    required: [true, 'Please provide first name'],
+    trim: true,
+  },
+  lastName: {
+    type: String,
+    required: [true, 'Please provide last name'],
+    trim: true,
+  },
   name: {
     type: String,
-    required: [true, 'Please provide a name'],
-    trim: true,
+    // Virtual field, will be computed from firstName + lastName
   },
   email: {
     type: String,
@@ -32,6 +41,41 @@ const userSchema = new mongoose.Schema({
     minlength: 6,
     select: false,
   },
+  dateOfBirth: {
+    type: Date,
+    required: [true, 'Please provide date of birth'],
+  },
+  age: {
+    type: Number,
+    required: [true, 'Please provide age'],
+  },
+  gender: {
+    type: String,
+    required: [true, 'Please provide gender'],
+    enum: ['male', 'female', 'other'],
+  },
+  diabetes: {
+    type: Boolean,
+    default: false,
+  },
+  cholesterol: {
+    type: Boolean,
+    default: false,
+  },
+  otherMedicalStatus: {
+    type: String,
+    default: '',
+  },
+  medicalReports: [{
+    url: String,
+    cloudinaryId: String,
+    fileName: String,
+    fileType: String, // 'image' or 'pdf'
+    uploadedAt: {
+      type: Date,
+      default: Date.now,
+    },
+  }],
   healthProfile: {
     type: healthProfileSchema,
     default: {},
@@ -42,11 +86,41 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['user', 'admin'],
+    enum: ['user', 'admin', 'master'],
     default: 'user',
   },
+  userId: {
+    type: String,
+    unique: true,
+    sparse: true,
+  },
+  dietaryPreferences: [{
+    type: String,
+    enum: ['vegan', 'vegetarian', 'non-vegetarian'],
+  }],
 }, {
   timestamps: true,
+});
+
+// Virtual for full name
+userSchema.virtual('fullName').get(function() {
+  return `${this.firstName} ${this.lastName}`;
+});
+
+// Generate user ID before saving (only for new users)
+userSchema.pre('save', async function(next) {
+  if (this.isNew && !this.userId && this.role === 'user') {
+    // Generate 8-digit user ID in format US-0000 0000
+    const count = await mongoose.model('User').countDocuments({ role: 'user' });
+    const paddedNumber = String(count + 1).padStart(8, '0');
+    this.userId = `US-${paddedNumber.slice(0, 4)} ${paddedNumber.slice(4)}`;
+  }
+  
+  // Set name field
+  if (this.firstName && this.lastName) {
+    this.name = `${this.firstName} ${this.lastName}`;
+  }
+  next();
 });
 
 // Hash password before saving

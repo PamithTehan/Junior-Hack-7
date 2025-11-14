@@ -8,9 +8,10 @@ const {
   deleteFood,
 } = require('../Controllers/foodController');
 const { protect, authorize } = require('../Middlewares/auth');
+const { optionalAdmin } = require('../Middlewares/optionalAdmin');
 const { upload } = require('../Config/cloudinary');
 
-router.route('/').get(getFoods).post(protect, authorize('admin'), upload.single('image'), createFood);
+router.route('/').get(optionalAdmin, getFoods).post(protect, authorize('admin'), upload.single('image'), createFood);
 router
   .route('/:id')
   .get(getFood)

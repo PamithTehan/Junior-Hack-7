@@ -11,9 +11,9 @@ const Recipes = () => {
     dispatch(fetchFoods({ limit: 100, category: selectedCategory }));
   }, [dispatch, selectedCategory]);
 
-  // Filter foods that are traditional and have descriptions (recipes)
+  // Filter foods that are traditional, have descriptions (recipes), and are approved
   const recipes = foods.filter(
-    (food) => food.isTraditional && food.description && food.description.length > 50
+    (food) => food.isTraditional && food.description && food.description.length > 50 && food.isApproved !== false
   );
 
   const categories = ['rice', 'curry', 'dessert', 'snack', 'beverage', 'bread'];

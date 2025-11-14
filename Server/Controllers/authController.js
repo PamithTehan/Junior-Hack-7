@@ -13,13 +13,25 @@ const generateToken = (id) => {
 // @access  Public
 exports.register = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const {
+      firstName,
+      lastName,
+      email,
+      password,
+      dateOfBirth,
+      age,
+      gender,
+      diabetes,
+      cholesterol,
+      otherMedicalStatus,
+      dietaryPreferences,
+    } = req.body;
 
-    // Validation
-    if (!name || !email || !password) {
+    // Validation - mandatory fields
+    if (!firstName || !lastName || !email || !password || !dateOfBirth || !age || !gender) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide name, email, and password',
+        message: 'Please provide all required fields: firstName, lastName, email, password, dateOfBirth, age, and gender',
       });
     }
 
@@ -32,24 +44,75 @@ exports.register = async (req, res) => {
       });
     }
 
+    // Handle file uploads (medical reports)
+    const medicalReports = [];
+    if (req.files && req.files.length > 0) {
+      const { uploadToCloudinary } = require('../Config/cloudinary');
+      
+      for (const file of req.files) {
+        try {
+          const isPdf = file.mimetype === 'application/pdf';
+          const result = await uploadToCloudinary(
+            file.buffer,
+            'sri-lankan-nutrition/medical-reports',
+            { resourceType: isPdf ? 'raw' : 'image' }
+          );
+          
+          medicalReports.push({
+            url: result.secure_url,
+            cloudinaryId: result.public_id,
+            fileName: file.originalname,
+            fileType: isPdf ? 'pdf' : 'image',
+          });
+        } catch (uploadError) {
+          console.error('Error uploading medical report:', uploadError);
+          // Continue with other files even if one fails
+        }
+      }
+    }
+
+    // Handle dietary preferences
+    let dietaryPrefs = [];
+    if (dietaryPreferences) {
+      try {
+        // Try parsing as JSON string first
+        if (typeof dietaryPreferences === 'string') {
+          dietaryPrefs = JSON.parse(dietaryPreferences);
+        } else if (Array.isArray(dietaryPreferences)) {
+          dietaryPrefs = dietaryPreferences.filter(p => p);
+        } else if (typeof dietaryPreferences === 'object') {
+          dietaryPrefs = Object.values(dietaryPreferences).filter(p => p);
+        }
+      } catch (e) {
+        // If parsing fails, treat as single value
+        dietaryPrefs = [dietaryPreferences];
+      }
+    }
+
     // Create user
     const user = await User.create({
-      name,
+      firstName,
+      lastName,
       email,
       password,
+      dateOfBirth: new Date(dateOfBirth),
+      age: parseInt(age),
+      gender,
+      diabetes: diabetes === true || diabetes === 'true',
+      cholesterol: cholesterol === true || cholesterol === 'true',
+      otherMedicalStatus: otherMedicalStatus || '',
+      dietaryPreferences: dietaryPrefs,
+      medicalReports,
     });
-
-    // Generate token
-    const token = generateToken(user._id);
 
     res.status(201).json({
       success: true,
-      token,
+      message: 'Registration successful! Please login to continue.',
       user: {
         id: user._id,
-        name: user.name,
+        firstName: user.firstName,
+        lastName: user.lastName,
         email: user.email,
-        healthProfile: user.healthProfile,
       },
     });
   } catch (error) {

@@ -25,8 +25,21 @@ export const register = createAsyncThunk(
   'auth/register',
   async (userData, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${API_URL}/auth/register`, userData);
-      setAuthToken(response.data.token);
+      // Check if userData is FormData (for file uploads)
+      const isFormData = userData instanceof FormData;
+      const config = isFormData
+        ? {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+            },
+          }
+        : {};
+
+      const response = await axios.post(`${API_URL}/auth/register`, userData, config);
+      
+      // Note: Registration no longer returns a token (user needs to login)
+      // setAuthToken(response.data.token);
+      
       return response.data;
     } catch (error) {
       return rejectWithValue(
@@ -96,9 +109,9 @@ const authSlice = createSlice({
       })
       .addCase(register.fulfilled, (state, action) => {
         state.loading = false;
-        state.user = action.payload.user;
-        state.token = action.payload.token;
-        state.isAuthenticated = true;
+        // Registration successful but user needs to login
+        // Don't set authentication state
+        state.error = null;
       })
       .addCase(register.rejected, (state, action) => {
         state.loading = false;

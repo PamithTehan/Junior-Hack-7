@@ -14,32 +14,39 @@ const storage = multer.memoryStorage();
 const upload = multer({ 
   storage: storage,
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
+    fileSize: 10 * 1024 * 1024, // 10MB limit (for PDFs and images)
   },
   fileFilter: (req, file, cb) => {
-    const allowedTypes = /jpeg|jpg|png|webp/;
-    const extname = allowedTypes.test(
-      file.originalname.toLowerCase().split('.').pop()
-    );
-    const mimetype = allowedTypes.test(file.mimetype);
+    // Allow images and PDFs
+    const allowedImageTypes = /jpeg|jpg|png|webp/;
+    const allowedPdfTypes = /pdf/;
+    const extname = file.originalname.toLowerCase().split('.').pop();
+    const isImage = allowedImageTypes.test(extname) && allowedImageTypes.test(file.mimetype);
+    const isPdf = allowedPdfTypes.test(extname) && file.mimetype === 'application/pdf';
 
-    if (mimetype && extname) {
+    if (isImage || isPdf) {
       return cb(null, true);
     } else {
-      cb(new Error('Only image files are allowed (jpg, jpeg, png, webp)'));
+      cb(new Error('Only image files (jpg, jpeg, png, webp) and PDF files are allowed'));
     }
   },
 });
 
 // Helper function to upload buffer to Cloudinary
-const uploadToCloudinary = (buffer, folder = 'sri-lankan-nutrition') => {
+const uploadToCloudinary = (buffer, folder = 'sri-lankan-nutrition', options = {}) => {
   return new Promise((resolve, reject) => {
+    const uploadOptions = {
+      folder: folder,
+      resource_type: options.resourceType || 'auto',
+    };
+
+    // Only apply image transformations for images (not for PDFs/raw files)
+    if (options.resourceType !== 'raw' && (!options.resourceType || options.resourceType === 'image' || options.resourceType === 'auto')) {
+      uploadOptions.transformation = [{ width: 800, height: 600, crop: 'limit' }];
+    }
+
     const uploadStream = cloudinary.uploader.upload_stream(
-      {
-        folder: folder,
-        transformation: [{ width: 800, height: 600, crop: 'limit' }],
-        resource_type: 'auto',
-      },
+      uploadOptions,
       (error, result) => {
         if (error) {
           reject(error);
