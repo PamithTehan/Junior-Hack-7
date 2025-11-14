@@ -1,7 +1,8 @@
 import { configureStore } from '@reduxjs/toolkit';
 import authReducer from './slices/authSlice';
 import adminReducer from './slices/adminSlice';
-import foodReducer from './slices/foodSlice';
+import ingredientReducer from './slices/ingredientSlice';
+import recipeReducer from './slices/recipeSlice';
 import userReducer from './slices/userSlice';
 import mealReducer from './slices/mealSlice';
 
@@ -9,7 +10,9 @@ export const store = configureStore({
   reducer: {
     auth: authReducer,
     admin: adminReducer,
-    food: foodReducer,
+    ingredient: ingredientReducer,
+    food: ingredientReducer, // Alias for backward compatibility
+    recipe: recipeReducer,
     user: userReducer,
     meal: mealReducer,
   },

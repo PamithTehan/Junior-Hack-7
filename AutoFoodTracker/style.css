@@ -369,6 +369,45 @@ main {
     transform: translateY(-1px);
 }
 
+.btn-add-tracker {
+    width: 100%;
+    padding: 15px 30px;
+    background: var(--success-gradient);
+    color: white;
+    border: none;
+    border-radius: var(--border-radius);
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    box-shadow: 0 5px 15px rgba(79, 172, 254, 0.4);
+    margin-top: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.btn-add-tracker:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(79, 172, 254, 0.6);
+}
+
+.btn-add-tracker:active {
+    transform: translateY(-1px);
+}
+
+.btn-add-tracker:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.add-icon {
+    width: 20px;
+    height: 20px;
+}
+
 /* Error Section */
 .error-section {
     text-align: center;

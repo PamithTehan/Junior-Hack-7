@@ -4,6 +4,7 @@ const {
   getDailyIntakes,
   getDailyIntake,
   addFood,
+  addScannedFood,
   removeFood,
 } = require('../Controllers/trackingController');
 const { protect } = require('../Middlewares/auth');
@@ -27,6 +28,7 @@ router.use(protect);
 
 router.get('/', getDailyIntakes);
 router.post('/', addFood);
+router.post('/scan', addScannedFood);
 // DELETE route - use query parameter to avoid route conflicts
 router.delete('/food', removeFood);
 router.get('/:date', getDailyIntake);

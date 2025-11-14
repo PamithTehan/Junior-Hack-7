@@ -47,7 +47,7 @@ const userSchema = new mongoose.Schema({
   },
   age: {
     type: Number,
-    required: [true, 'Please provide age'],
+    // Age will be calculated from dateOfBirth
   },
   gender: {
     type: String,
@@ -109,36 +109,108 @@ userSchema.virtual('fullName').get(function() {
 
 // Generate user ID before saving (only for new users)
 userSchema.pre('save', async function(next) {
-  if (this.isNew && !this.userId && this.role === 'user') {
-    // Generate 8-digit user ID in format US-0000 0000
-    const count = await mongoose.model('User').countDocuments({ role: 'user' });
-    const paddedNumber = String(count + 1).padStart(8, '0');
-    this.userId = `US-${paddedNumber.slice(0, 4)} ${paddedNumber.slice(4)}`;
+  // Skip if document is not new or already has userId
+  if (!this.isNew || this.userId) {
+    // Set name field
+    if (this.firstName && this.lastName) {
+      this.name = `${this.firstName} ${this.lastName}`;
+    }
+    return next();
   }
-  
-  // Set name field
-  if (this.firstName && this.lastName) {
-    this.name = `${this.firstName} ${this.lastName}`;
+
+  try {
+    // Set name field first
+    if (this.firstName && this.lastName) {
+      this.name = `${this.firstName} ${this.lastName}`;
+    }
+    
+    // Generate user ID only for new users without userId and role is 'user'
+    if (!this.userId && this.role === 'user') {
+      try {
+        // Use this.constructor to get the model (safe for pre-save hooks)
+        const UserModel = this.constructor;
+        if (UserModel && typeof UserModel.countDocuments === 'function') {
+          const count = await UserModel.countDocuments({ role: 'user' });
+          const paddedNumber = String(count + 1).padStart(8, '0');
+          this.userId = `US-${paddedNumber.slice(0, 4)} ${paddedNumber.slice(4)}`;
+        } else {
+          // Fallback if model is not available
+          const timestamp = Date.now().toString().slice(-8);
+          this.userId = `US-${timestamp.slice(0, 4)} ${timestamp.slice(4)}`;
+        }
+      } catch (countError) {
+        // If count fails, generate a simple ID based on timestamp
+        console.error('Error counting users for ID generation:', countError);
+        const timestamp = Date.now().toString().slice(-8);
+        this.userId = `US-${timestamp.slice(0, 4)} ${timestamp.slice(4)}`;
+      }
+    }
+    
+    next();
+  } catch (error) {
+    console.error('Error in user pre-save hook:', error);
+    console.error('Error details:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+    });
+    next(error);
   }
-  next();
 });
 
 // Hash password before saving
 userSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();
-  this.password = await bcrypt.hash(this.password, 12);
-  next();
+  try {
+    this.password = await bcrypt.hash(this.password, 12);
+    next();
+  } catch (error) {
+    console.error('Error hashing password:', error);
+    next(error);
+  }
 });
 
-// Calculate BMI before saving
+// Calculate age from dateOfBirth and BMI before saving
 userSchema.pre('save', function(next) {
-  if (this.healthProfile.weight && this.healthProfile.height) {
-    const heightInMeters = this.healthProfile.height / 100;
-    this.healthProfile.bmi = (
-      this.healthProfile.weight / (heightInMeters * heightInMeters)
-    ).toFixed(2);
+  try {
+    // Initialize healthProfile if it doesn't exist
+    if (!this.healthProfile) {
+      this.healthProfile = {};
+    }
+    
+    // Calculate age from dateOfBirth
+    if (this.dateOfBirth) {
+      const today = new Date();
+      const birthDate = new Date(this.dateOfBirth);
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+      
+      this.age = age;
+      
+      // Update healthProfile age
+      this.healthProfile.age = age;
+    }
+    
+    // Calculate BMI from weight and height
+    const weight = this.healthProfile.weight;
+    const height = this.healthProfile.height;
+    
+    if (weight && height && weight > 0 && height > 0) {
+      const heightInMeters = height / 100;
+      this.healthProfile.bmi = parseFloat(
+        (weight / (heightInMeters * heightInMeters)).toFixed(2)
+      );
+    }
+    
+    next();
+  } catch (error) {
+    console.error('Error in age/BMI calculation pre-save hook:', error);
+    next(error);
   }
-  next();
 });
 
 // Compare password method

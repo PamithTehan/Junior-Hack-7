@@ -13,7 +13,6 @@ const Footer = () => {
           <div>
             <h3 className="text-lg font-bold mb-4">Quick Links</h3>
             <ul className="space-y-2 text-primary-200 dark:text-gray-400">
-              <li><a href="/foods" className="hover:text-white dark:hover:text-gray-100 transition-colors">Food Database</a></li>
               <li><a href="/meal-planner" className="hover:text-white dark:hover:text-gray-100 transition-colors">Meal Planner</a></li>
               <li><a href="/tracker" className="hover:text-white dark:hover:text-gray-100 transition-colors">Food Tracker</a></li>
               <li><a href="/recipes" className="hover:text-white dark:hover:text-gray-100 transition-colors">Recipes</a></li>

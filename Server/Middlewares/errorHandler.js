@@ -4,7 +4,16 @@ const errorHandler = (err, req, res, next) => {
   error.message = err.message;
 
   // Log to console for dev
-  console.error(err);
+  console.error('Error Handler:', err);
+  console.error('Error name:', err.name);
+  console.error('Error code:', err.code);
+  console.error('Error message:', err.message);
+  if (err.errors) {
+    console.error('Error details:', err.errors);
+  }
+  if (err.stack) {
+    console.error('Error stack:', err.stack);
+  }
 
   // Mongoose bad ObjectId
   if (err.name === 'CastError') {
@@ -24,10 +33,19 @@ const errorHandler = (err, req, res, next) => {
     error = { message, statusCode: 400 };
   }
 
-  res.status(error.statusCode || 500).json({
+  // Default to 500 server error
+  const statusCode = error.statusCode || err.statusCode || 500;
+  const message = error.message || err.message || 'Server Error';
+
+  res.status(statusCode).json({
     success: false,
-    message: error.message || 'Server Error',
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
+    message,
+    ...(process.env.NODE_ENV === 'development' && { 
+      stack: err.stack,
+      error: err.message,
+      errorName: err.name,
+      errorCode: err.code,
+    }),
   });
 };
 

@@ -3,97 +3,93 @@ import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-export const fetchFoods = createAsyncThunk(
-  'food/fetchFoods',
-  async ({ search, category, page = 1, limit = 20 }, { rejectWithValue }) => {
+export const fetchRecipes = createAsyncThunk(
+  'recipe/fetchRecipes',
+  async ({ search, dietaryType, page = 1, limit = 20 }, { rejectWithValue }) => {
     try {
       const params = { page, limit };
       if (search) params.search = search;
-      if (category) params.category = category;
+      if (dietaryType) params.dietaryType = dietaryType;
 
-      const response = await axios.get(`${API_URL}/foods`, { params });
+      const response = await axios.get(`${API_URL}/recipes`, { params });
       return response.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message || 'Failed to fetch foods'
+        error.response?.data?.message || 'Failed to fetch recipes'
       );
     }
   }
 );
 
-export const fetchFood = createAsyncThunk(
-  'food/fetchFood',
+export const fetchRecipe = createAsyncThunk(
+  'recipe/fetchRecipe',
   async (id, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${API_URL}/foods/${id}`);
+      const response = await axios.get(`${API_URL}/recipes/${id}`);
       return response.data.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message || 'Failed to fetch food'
+        error.response?.data?.message || 'Failed to fetch recipe'
       );
     }
   }
 );
 
 const initialState = {
-  foods: [],
-  selectedFood: null,
+  recipes: [],
+  selectedRecipe: null,
   total: 0,
   loading: false,
   error: null,
   searchTerm: '',
-  category: '',
   currentPage: 1,
 };
 
-const foodSlice = createSlice({
-  name: 'food',
+const recipeSlice = createSlice({
+  name: 'recipe',
   initialState,
   reducers: {
     setSearchTerm: (state, action) => {
       state.searchTerm = action.payload;
     },
-    setCategory: (state, action) => {
-      state.category = action.payload;
-    },
     setCurrentPage: (state, action) => {
       state.currentPage = action.payload;
     },
-    clearSelectedFood: (state) => {
-      state.selectedFood = null;
+    clearSelectedRecipe: (state) => {
+      state.selectedRecipe = null;
     },
   },
   extraReducers: (builder) => {
     builder
-      .addCase(fetchFoods.pending, (state) => {
+      .addCase(fetchRecipes.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(fetchFoods.fulfilled, (state, action) => {
+      .addCase(fetchRecipes.fulfilled, (state, action) => {
         state.loading = false;
-        state.foods = action.payload.data;
+        state.recipes = action.payload.data;
         state.total = action.payload.total;
       })
-      .addCase(fetchFoods.rejected, (state, action) => {
+      .addCase(fetchRecipes.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
-      .addCase(fetchFood.pending, (state) => {
+      .addCase(fetchRecipe.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(fetchFood.fulfilled, (state, action) => {
+      .addCase(fetchRecipe.fulfilled, (state, action) => {
         state.loading = false;
-        state.selectedFood = action.payload;
+        state.selectedRecipe = action.payload;
       })
-      .addCase(fetchFood.rejected, (state, action) => {
+      .addCase(fetchRecipe.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       });
   },
 });
 
-export const { setSearchTerm, setCategory, setCurrentPage, clearSelectedFood } =
-  foodSlice.actions;
-export default foodSlice.reducer;
+export const { setSearchTerm, setCurrentPage, clearSelectedRecipe } =
+  recipeSlice.actions;
+export default recipeSlice.reducer;
 

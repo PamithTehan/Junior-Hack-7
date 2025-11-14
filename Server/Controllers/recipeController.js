@@ -5,36 +5,45 @@ const Recipe = require('../Models/Recipe');
 // @access  Public
 exports.getRecipes = async (req, res) => {
   try {
-    const { search, category, page = 1, limit = 20 } = req.query;
+    const { search, dietaryType, page = 1, limit = 20 } = req.query;
     const query = {};
+
+    // Filter out street foods - exclude recipes with street food tags
+    // This will match recipes where tags doesn't exist, is empty, or doesn't contain street food tags
+    const streetFoodTags = ['street-food', 'street food', 'fast-food', 'fast food'];
+    const andConditions = [
+      {
+        $or: [
+          { tags: { $exists: false } },
+          { tags: { $size: 0 } },
+          { tags: { $nin: streetFoodTags } }
+        ]
+      }
+    ];
+
+    // Dietary type filter
+    if (dietaryType && ['vegan', 'vegetarian', 'non-vegetarian'].includes(dietaryType)) {
+      query.dietaryType = dietaryType;
+    }
 
     // Search filter
     if (search) {
-      query.$or = [
-        { 'name.en': { $regex: search, $options: 'i' } },
-        { 'name.si': { $regex: search, $options: 'i' } },
-        { 'name.ta': { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } },
-      ];
+      andConditions.push({
+        $or: [
+          { name: { $regex: search, $options: 'i' } },
+          { mainIngredient: { $regex: search, $options: 'i' } },
+        ]
+      });
     }
 
-    // Category filter
-    if (category) {
-      query.category = category;
-    }
-
-    // Only show approved recipes to regular users (admins can see all)
-    const isAdmin = (req.user && (req.user.role === 'admin' || req.user.role === 'master')) || 
-                    (req.adminUser && (req.adminUser.role === 'admin' || req.adminUser.role === 'master')) ||
-                    req.isAdmin;
-    if (!isAdmin) {
-      query.isApproved = true;
+    // Combine all conditions with $and
+    if (andConditions.length > 0) {
+      query.$and = andConditions;
     }
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     const recipes = await Recipe.find(query)
-      .populate('ingredients.foodId', 'name nutrition servingSize')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
@@ -61,8 +70,7 @@ exports.getRecipes = async (req, res) => {
 // @access  Public
 exports.getRecipe = async (req, res) => {
   try {
-    const recipe = await Recipe.findById(req.params.id)
-      .populate('ingredients.foodId', 'name nutrition servingSize');
+    const recipe = await Recipe.findById(req.params.id);
 
     if (!recipe) {
       return res.status(404).json({
@@ -89,10 +97,63 @@ exports.getRecipe = async (req, res) => {
 // @access  Private/Admin
 exports.createRecipe = async (req, res) => {
   try {
-    // This will be enhanced later
-    res.status(501).json({
-      success: false,
-      message: 'Recipe creation will be implemented in the next phase',
+    const { name, mainIngredient, otherIngredients, instructions, nutrition, dietaryType, tags } = req.body;
+
+    // Validation
+    if (!name || !mainIngredient || !instructions || !nutrition || !dietaryType) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide name, mainIngredient, instructions, nutrition information, and dietaryType',
+      });
+    }
+
+    // Validate dietary type
+    if (!['vegan', 'vegetarian', 'non-vegetarian'].includes(dietaryType)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Dietary type must be one of: vegan, vegetarian, non-vegetarian',
+      });
+    }
+
+    // Validate nutrition fields
+    if (typeof nutrition.calories === 'undefined' || 
+        typeof nutrition.carbohydrates === 'undefined' ||
+        typeof nutrition.proteins === 'undefined') {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide calories, carbohydrates, and proteins values',
+      });
+    }
+
+    const recipeData = {
+      name: name.trim(),
+      mainIngredient: mainIngredient.trim(),
+      otherIngredients: Array.isArray(otherIngredients) 
+        ? otherIngredients.map(ing => ing.trim()).filter(ing => ing)
+        : [],
+      instructions: instructions.trim(),
+      dietaryType: dietaryType.trim(),
+      nutrition: {
+        calories: parseFloat(nutrition.calories) || 0,
+        carbohydrates: parseFloat(nutrition.carbohydrates) || 0,
+        proteins: parseFloat(nutrition.proteins) || 0,
+        fat: parseFloat(nutrition.fat) || 0,
+        fiber: parseFloat(nutrition.fiber) || 0,
+      },
+    };
+
+    // Add tags if provided (filter out street-food tags)
+    if (tags && Array.isArray(tags) && tags.length > 0) {
+      recipeData.tags = tags.map(tag => tag.trim())
+        .filter(tag => tag && !['street-food', 'street food', 'fast-food', 'fast food'].includes(tag.toLowerCase()));
+    }
+
+    const recipe = await Recipe.create(recipeData);
+
+    res.status(201).json({
+      success: true,
+      message: 'Recipe created successfully',
+      data: recipe,
     });
   } catch (error) {
     res.status(500).json({
@@ -108,10 +169,67 @@ exports.createRecipe = async (req, res) => {
 // @access  Private/Admin
 exports.updateRecipe = async (req, res) => {
   try {
-    // This will be enhanced later
-    res.status(501).json({
-      success: false,
-      message: 'Recipe update will be implemented in the next phase',
+    let recipe = await Recipe.findById(req.params.id);
+
+    if (!recipe) {
+      return res.status(404).json({
+        success: false,
+        message: 'Recipe not found',
+      });
+    }
+
+    const updateData = { ...req.body };
+
+    // Parse nutrition if it's a string
+    if (updateData.nutrition && typeof updateData.nutrition === 'string') {
+      try {
+        updateData.nutrition = JSON.parse(updateData.nutrition);
+      } catch (e) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid nutrition data format',
+        });
+      }
+    }
+
+    // Parse otherIngredients if it's a string
+    if (updateData.otherIngredients && typeof updateData.otherIngredients === 'string') {
+      try {
+        updateData.otherIngredients = JSON.parse(updateData.otherIngredients);
+      } catch (e) {
+        updateData.otherIngredients = [];
+      }
+    }
+
+    // Parse tags if it's a string
+    if (updateData.tags && typeof updateData.tags === 'string') {
+      try {
+        updateData.tags = JSON.parse(updateData.tags);
+      } catch (e) {
+        updateData.tags = [];
+      }
+    }
+
+    // Ensure nutrition values are numbers
+    if (updateData.nutrition) {
+      updateData.nutrition = {
+        calories: parseFloat(updateData.nutrition.calories) ?? recipe.nutrition.calories,
+        carbohydrates: parseFloat(updateData.nutrition.carbohydrates) ?? recipe.nutrition.carbohydrates,
+        proteins: parseFloat(updateData.nutrition.proteins) ?? recipe.nutrition.proteins,
+        fat: parseFloat(updateData.nutrition.fat) ?? recipe.nutrition.fat,
+        fiber: parseFloat(updateData.nutrition.fiber) ?? recipe.nutrition.fiber,
+      };
+    }
+
+    recipe = await Recipe.findByIdAndUpdate(req.params.id, updateData, {
+      new: true,
+      runValidators: true,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Recipe updated successfully',
+      data: recipe,
     });
   } catch (error) {
     res.status(500).json({
@@ -136,16 +254,6 @@ exports.deleteRecipe = async (req, res) => {
       });
     }
 
-    // Delete image from Cloudinary if exists
-    if (recipe.cloudinaryId) {
-      try {
-        const { deleteFromCloudinary } = require('../Config/cloudinary');
-        await deleteFromCloudinary(recipe.cloudinaryId);
-      } catch (deleteError) {
-        console.error('Error deleting image from Cloudinary:', deleteError);
-      }
-    }
-
     await Recipe.findByIdAndDelete(req.params.id);
 
     res.status(200).json({
@@ -160,4 +268,3 @@ exports.deleteRecipe = async (req, res) => {
     });
   }
 };
-

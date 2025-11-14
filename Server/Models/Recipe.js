@@ -1,103 +1,52 @@
 const mongoose = require('mongoose');
 
-const nameSchema = new mongoose.Schema({
-  en: { type: String, required: true },
-  si: { type: String },
-  ta: { type: String },
+const nutritionSchema = new mongoose.Schema({
+  calories: { type: Number, required: true },
+  carbohydrates: { type: Number, required: true, default: 0 }, // in grams
+  proteins: { type: Number, required: true, default: 0 }, // in grams
+  fat: { type: Number, default: 0 }, // in grams
+  fiber: { type: Number, default: 0 }, // in grams
 }, { _id: false });
 
 const recipeSchema = new mongoose.Schema({
   name: {
-    type: nameSchema,
+    type: String,
     required: [true, 'Recipe name is required'],
+    trim: true,
   },
-  description: {
+  mainIngredient: {
     type: String,
-    default: '',
+    required: [true, 'Main ingredient name is required'],
+    trim: true,
   },
-  category: {
+  otherIngredients: [{
     type: String,
-    enum: ['rice', 'curry', 'dessert', 'snack', 'beverage', 'bread', 'other'],
-    default: 'other',
-  },
-  ingredients: [{
-    foodId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Food',
-      required: true,
-    },
-    quantity: {
-      type: Number,
-      required: true,
-    },
-    unit: {
-      type: String,
-      default: 'g',
-    },
+    trim: true,
   }],
-  instructions: [{
-    step: {
-      type: Number,
-      required: true,
-    },
-    description: {
-      type: String,
-      required: true,
-    },
-  }],
-  servings: {
-    type: Number,
-    default: 1,
-  },
-  prepTime: {
-    type: Number, // in minutes
-    default: 0,
-  },
-  cookTime: {
-    type: Number, // in minutes
-    default: 0,
+  instructions: {
+    type: String,
+    required: [true, 'Instructions are required'],
   },
   nutrition: {
-    calories: { type: Number, default: 0 },
-    protein: { type: Number, default: 0 },
-    carbohydrates: { type: Number, default: 0 },
-    fat: { type: Number, default: 0 },
-    fiber: { type: Number, default: 0 },
+    type: nutritionSchema,
+    required: true,
   },
-  image: {
+  dietaryType: {
     type: String,
-    default: null,
+    required: [true, 'Dietary type is required'],
+    enum: ['vegan', 'vegetarian', 'non-vegetarian'],
+    trim: true,
   },
-  cloudinaryId: {
+  tags: [{ 
     type: String,
-    default: null,
-  },
-  isApproved: {
-    type: Boolean,
-    default: false,
-  },
-  approvedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    default: null,
-  },
-  approvedAt: {
-    type: Date,
-    default: null,
-  },
-  createdBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    default: null,
-  },
+    trim: true,
+  }], // Optional tags like 'traditional', 'spicy', 'healthy', 'diabetes-friendly'
 }, {
   timestamps: true,
 });
 
 // Index for search
-recipeSchema.index({ 'name.en': 'text', 'name.si': 'text', 'name.ta': 'text', description: 'text' });
-recipeSchema.index({ category: 1 });
-recipeSchema.index({ isApproved: 1 });
+recipeSchema.index({ name: 'text', mainIngredient: 'text' });
+recipeSchema.index({ tags: 1 });
 
 module.exports = mongoose.model('Recipe', recipeSchema);
-

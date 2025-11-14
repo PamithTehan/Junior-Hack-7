@@ -1,139 +1,201 @@
 import { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { fetchFoods } from '../store/slices/foodSlice';
+import { fetchRecipes, setSearchTerm } from '../store/slices/recipeSlice';
 
 const Recipes = () => {
   const dispatch = useDispatch();
-  const { foods, loading } = useSelector((state) => state.food);
-  const [selectedCategory, setSelectedCategory] = useState('');
+  const { recipes, loading, error, searchTerm } = useSelector((state) => state.recipe);
+  const [localSearch, setLocalSearch] = useState('');
+  const [selectedDietaryType, setSelectedDietaryType] = useState('');
 
   useEffect(() => {
-    dispatch(fetchFoods({ limit: 100, category: selectedCategory }));
-  }, [dispatch, selectedCategory]);
+    dispatch(fetchRecipes({ search: searchTerm, dietaryType: selectedDietaryType }));
+  }, [dispatch, searchTerm, selectedDietaryType]);
 
-  // Filter foods that are traditional, have descriptions (recipes), and are approved
-  const recipes = foods.filter(
-    (food) => food.isTraditional && food.description && food.description.length > 50 && food.isApproved !== false
-  );
+  const handleSearch = (e) => {
+    e.preventDefault();
+    dispatch(setSearchTerm(localSearch));
+  };
 
-  const categories = ['rice', 'curry', 'dessert', 'snack', 'beverage', 'bread'];
+  const dietaryTypes = [
+    { value: '', label: 'All Recipes' },
+    { value: 'vegan', label: 'Vegan' },
+    { value: 'vegetarian', label: 'Vegetarian' },
+    { value: 'non-vegetarian', label: 'Non-Vegetarian' },
+  ];
 
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
-        <h1 className="text-4xl font-bold text-gray-800 mb-2">Healthy Sri Lankan Recipes</h1>
-        <p className="text-gray-600">
-          Discover healthy and traditional Sri Lankan recipes for managing diabetes, 
-          obesity, and heart disease
+        <h1 className="text-4xl font-bold text-gray-800 dark:text-gray-100 mb-2">
+          Healthy Sri Lankan Recipes
+        </h1>
+        <p className="text-gray-600 dark:text-gray-400">
+          Discover healthy and traditional Sri Lankan recipes
         </p>
       </div>
 
-      {/* Category Filter */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => setSelectedCategory('')}
-            className={`px-4 py-2 rounded-lg transition-colors ${
-              selectedCategory === ''
-                ? 'bg-primary-600 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
-          >
-            All Recipes
-          </button>
-          {categories.map((cat) => (
+      {/* Search and Filter */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-8">
+        <form onSubmit={handleSearch} className="mb-6">
+          <div className="flex gap-4">
+            <input
+              type="text"
+              value={localSearch}
+              onChange={(e) => setLocalSearch(e.target.value)}
+              placeholder="Search healthy Sri Lankan recipes..."
+              className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100"
+            />
             <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={`px-4 py-2 rounded-lg transition-colors capitalize ${
-                selectedCategory === cat
+              type="submit"
+              className="bg-primary-600 text-white px-6 py-2 rounded-lg hover:bg-primary-700 transition-colors"
+            >
+              Search
+            </button>
+          </div>
+        </form>
+
+        {/* Dietary Type Filter */}
+        <div className="flex flex-wrap gap-2">
+          {dietaryTypes.map((type) => (
+            <button
+              key={type.value}
+              onClick={() => setSelectedDietaryType(type.value)}
+              className={`px-4 py-2 rounded-lg transition-colors ${
+                selectedDietaryType === type.value
                   ? 'bg-primary-600 text-white'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
               }`}
             >
-              {cat}
+              {type.label}
             </button>
           ))}
         </div>
       </div>
 
-      {loading ? (
+      {/* Loading State */}
+      {loading && (
         <div className="text-center py-12">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
         </div>
-      ) : recipes.length > 0 ? (
+      )}
+
+      {/* Error State */}
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+          {error}
+        </div>
+      )}
+
+      {/* Recipes Grid */}
+      {!loading && !error && recipes.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {recipes.map((recipe) => (
             <div
               key={recipe._id}
-              className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
+              className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
             >
-              {recipe.image && (
-                <img
-                  src={recipe.image}
-                  alt={recipe.name.en}
-                  className="w-full h-48 object-cover"
-                />
-              )}
               <div className="p-6">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-xl font-bold text-gray-800">{recipe.name.en}</h3>
-                  <span className="bg-primary-100 text-primary-800 px-3 py-1 rounded-full text-xs font-semibold capitalize">
-                    {recipe.category}
-                  </span>
-                </div>
+                  <div className="mb-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">
+                        {recipe.name}
+                      </h3>
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                        recipe.dietaryType === 'vegan' 
+                          ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
+                          : recipe.dietaryType === 'vegetarian'
+                          ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300'
+                          : 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300'
+                      }`}>
+                        {recipe.dietaryType || 'N/A'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        Main Ingredient:
+                      </span>
+                      <span className="font-semibold text-primary-600 dark:text-primary-400">
+                        {recipe.mainIngredient}
+                      </span>
+                    </div>
+                  </div>
 
-                {recipe.name.si && (
-                  <p className="text-sm text-gray-600 mb-2">
-                    <span className="font-semibold">Sinhala:</span> {recipe.name.si}
-                  </p>
+                {/* Other Ingredients */}
+                {recipe.otherIngredients && recipe.otherIngredients.length > 0 && (
+                  <div className="mb-4">
+                    <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                      Other Ingredients:
+                    </h4>
+                    <div className="flex flex-wrap gap-2">
+                      {recipe.otherIngredients.map((ingredient, index) => (
+                        <span
+                          key={index}
+                          className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded text-xs"
+                        >
+                          {ingredient}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
                 )}
-                {recipe.name.ta && (
-                  <p className="text-sm text-gray-600 mb-4">
-                    <span className="font-semibold">Tamil:</span> {recipe.name.ta}
-                  </p>
-                )}
 
-                <p className="text-gray-700 mb-4 line-clamp-3">{recipe.description}</p>
-
-                <div className="border-t pt-4 mb-4">
-                  <h4 className="font-semibold text-gray-700 mb-2">
-                    Nutrition (per {recipe.servingSize}):
+                {/* Nutrition Information */}
+                <div className="border-t dark:border-gray-700 pt-4 mb-4">
+                  <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                    Nutrition:
                   </h4>
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div>
-                      <span className="text-gray-600">Calories:</span>
-                      <span className="font-semibold ml-2">
-                        {recipe.nutrition.calories} kcal
+                      <span className="text-gray-600 dark:text-gray-400">Calories:</span>
+                      <span className="font-semibold ml-2 text-gray-800 dark:text-gray-100">
+                        {recipe.nutrition?.calories || 0} kcal
                       </span>
                     </div>
                     <div>
-                      <span className="text-gray-600">Protein:</span>
-                      <span className="font-semibold ml-2">
-                        {recipe.nutrition.protein}g
+                      <span className="text-gray-600 dark:text-gray-400">Proteins:</span>
+                      <span className="font-semibold ml-2 text-gray-800 dark:text-gray-100">
+                        {recipe.nutrition?.proteins || 0}g
                       </span>
                     </div>
                     <div>
-                      <span className="text-gray-600">Carbs:</span>
-                      <span className="font-semibold ml-2">
-                        {recipe.nutrition.carbs}g
+                      <span className="text-gray-600 dark:text-gray-400">Carbohydrates:</span>
+                      <span className="font-semibold ml-2 text-gray-800 dark:text-gray-100">
+                        {recipe.nutrition?.carbohydrates || 0}g
                       </span>
                     </div>
                     <div>
-                      <span className="text-gray-600">Fat:</span>
-                      <span className="font-semibold ml-2">
-                        {recipe.nutrition.fat}g
+                      <span className="text-gray-600 dark:text-gray-400">Fat:</span>
+                      <span className="font-semibold ml-2 text-gray-800 dark:text-gray-100">
+                        {recipe.nutrition?.fat || 0}g
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600 dark:text-gray-400">Fiber:</span>
+                      <span className="font-semibold ml-2 text-gray-800 dark:text-gray-100">
+                        {recipe.nutrition?.fiber || 0}g
                       </span>
                     </div>
                   </div>
                 </div>
 
+                {/* Instructions */}
+                <div className="mb-4">
+                  <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                    Instructions:
+                  </h4>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-3">
+                    {recipe.instructions}
+                  </p>
+                </div>
+
+                {/* Tags */}
                 {recipe.tags && recipe.tags.length > 0 && (
                   <div className="flex flex-wrap gap-2">
                     {recipe.tags.map((tag, index) => (
                       <span
                         key={index}
-                        className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs"
+                        className="px-2 py-1 bg-primary-100 dark:bg-primary-900/30 text-primary-800 dark:text-primary-300 rounded text-xs"
                       >
                         {tag}
                       </span>
@@ -144,12 +206,17 @@ const Recipes = () => {
             </div>
           ))}
         </div>
-      ) : (
-        <div className="text-center py-12 bg-white rounded-lg shadow-md">
-          <div className="text-6xl mb-4">🍛</div>
-          <h3 className="text-xl font-bold text-gray-800 mb-2">No recipes found</h3>
-          <p className="text-gray-600">
-            Try selecting a different category or check back later for more recipes
+      )}
+
+      {/* Empty State */}
+      {!loading && !error && recipes.length === 0 && (
+        <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg shadow-md">
+          <div className="text-6xl mb-4">🍽️</div>
+          <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-2">
+            No recipes found
+          </h3>
+          <p className="text-gray-600 dark:text-gray-400">
+            Try adjusting your search criteria
           </p>
         </div>
       )}
@@ -158,4 +225,3 @@ const Recipes = () => {
 };
 
 export default Recipes;
-

@@ -158,7 +158,9 @@ const Dashboard = () => {
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <span className="text-gray-600 dark:text-gray-400">{t('dashboard.bmi')}:</span>
-                <span className="font-semibold text-gray-800 dark:text-gray-100">{user.healthProfile.bmi || 'N/A'}</span>
+                <span className="font-semibold text-gray-800 dark:text-gray-100">
+                  {user.healthProfile.bmi ? user.healthProfile.bmi.toFixed(1) : 'N/A'}
+                </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-gray-600 dark:text-gray-400">{t('dashboard.weight')}:</span>
@@ -170,7 +172,18 @@ const Dashboard = () => {
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-gray-600 dark:text-gray-400">{t('dashboard.age')}:</span>
-                <span className="font-semibold text-gray-800 dark:text-gray-100">{user.healthProfile.age || 'N/A'} years</span>
+                <span className="font-semibold text-gray-800 dark:text-gray-100">
+                  {user.dateOfBirth ? (() => {
+                    const today = new Date();
+                    const birthDate = new Date(user.dateOfBirth);
+                    let age = today.getFullYear() - birthDate.getFullYear();
+                    const monthDiff = today.getMonth() - birthDate.getMonth();
+                    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                      age--;
+                    }
+                    return `${age} years`;
+                  })() : user.healthProfile.age ? `${user.healthProfile.age} years` : 'N/A'}
+                </span>
               </div>
               {user.healthProfile.healthConditions?.length > 0 && (
                 <div className="mt-4">

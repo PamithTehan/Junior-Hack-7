@@ -17,12 +17,10 @@ const Register = () => {
   const [showOtherMedical, setShowOtherMedical] = useState(false);
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
 
-  const otherMedicalChecked = watch('otherMedical');
-
-  // Watch for otherMedical checkbox
-  const handleOtherMedicalChange = (checked) => {
-    setShowOtherMedical(checked);
-    if (!checked) {
+  // Watch for otherMedical dropdown
+  const handleOtherMedicalChange = (value) => {
+    setShowOtherMedical(value === 'yes');
+    if (value !== 'yes') {
       registerForm('otherMedicalStatus', { value: '' });
     }
   };
@@ -34,7 +32,7 @@ const Register = () => {
 
   const onStep1Submit = (data) => {
     // Validate step 1 data
-    if (!data.firstName || !data.lastName || !data.email || !data.dateOfBirth || !data.age || !data.gender || !data.password) {
+    if (!data.firstName || !data.lastName || !data.email || !data.dateOfBirth || !data.height || !data.weight || !data.gender || !data.password) {
       return;
     }
     setStep(2);
@@ -50,17 +48,18 @@ const Register = () => {
     formData.append('email', data.email);
     formData.append('password', data.password);
     formData.append('dateOfBirth', data.dateOfBirth);
-    formData.append('age', data.age);
+    formData.append('height', data.height);
+    formData.append('weight', data.weight);
     formData.append('gender', data.gender);
-    formData.append('diabetes', data.diabetes || false);
-    formData.append('cholesterol', data.cholesterol || false);
+    formData.append('diabetes', data.diabetes === 'yes' || false);
+    formData.append('cholesterol', data.cholesterol === 'yes' || false);
     formData.append('otherMedicalStatus', data.otherMedicalStatus || '');
 
     // Add dietary preferences
     const dietaryPreferences = [];
-    if (data.dietaryPreferences?.vegan) dietaryPreferences.push('vegan');
-    if (data.dietaryPreferences?.vegetarian) dietaryPreferences.push('vegetarian');
-    if (data.dietaryPreferences?.nonVegetarian) dietaryPreferences.push('non-vegetarian');
+    if (data.dietaryPreferences?.vegan === 'yes') dietaryPreferences.push('vegan');
+    if (data.dietaryPreferences?.vegetarian === 'yes') dietaryPreferences.push('vegetarian');
+    if (data.dietaryPreferences?.nonVegetarian === 'yes') dietaryPreferences.push('non-vegetarian');
     // Send as array
     if (dietaryPreferences.length > 0) {
       formData.append('dietaryPreferences', JSON.stringify(dietaryPreferences));
@@ -195,43 +194,67 @@ const Register = () => {
               )}
             </div>
 
+            <div>
+              <label htmlFor="dateOfBirth" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Date of Birth <span className="text-red-500">*</span>
+              </label>
+              <input
+                {...registerForm('dateOfBirth', {
+                  required: 'Date of birth is required',
+                })}
+                type="date"
+                id="dateOfBirth"
+                className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all outline-none bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100"
+              />
+              {errors.dateOfBirth && (
+                <p className="mt-1 text-sm text-red-600">{errors.dateOfBirth.message}</p>
+              )}
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label htmlFor="dateOfBirth" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Date of Birth <span className="text-red-500">*</span>
+                <label htmlFor="height" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Height (cm) <span className="text-red-500">*</span>
                 </label>
                 <input
-                  {...registerForm('dateOfBirth', {
-                    required: 'Date of birth is required',
+                  {...registerForm('height', {
+                    required: 'Height is required',
+                    min: { value: 50, message: 'Height must be at least 50 cm' },
+                    max: { value: 250, message: 'Height must be less than 250 cm' },
                   })}
-                  type="date"
-                  id="dateOfBirth"
+                  type="number"
+                  id="height"
+                  min="50"
+                  max="250"
+                  step="0.1"
                   className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all outline-none bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100"
+                  placeholder="Height in cm"
                 />
-                {errors.dateOfBirth && (
-                  <p className="mt-1 text-sm text-red-600">{errors.dateOfBirth.message}</p>
+                {errors.height && (
+                  <p className="mt-1 text-sm text-red-600">{errors.height.message}</p>
                 )}
               </div>
 
               <div>
-                <label htmlFor="age" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Age <span className="text-red-500">*</span>
+                <label htmlFor="weight" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Weight (kg) <span className="text-red-500">*</span>
                 </label>
                 <input
-                  {...registerForm('age', {
-                    required: 'Age is required',
-                    min: { value: 1, message: 'Age must be at least 1' },
-                    max: { value: 150, message: 'Age must be less than 150' },
+                  {...registerForm('weight', {
+                    required: 'Weight is required',
+                    min: { value: 1, message: 'Weight must be at least 1 kg' },
+                    max: { value: 500, message: 'Weight must be less than 500 kg' },
                   })}
                   type="number"
-                  id="age"
+                  id="weight"
                   min="1"
-                  max="150"
+                  max="500"
+                  step="0.1"
                   className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all outline-none bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100"
-                  placeholder="Age"
+                  placeholder="Weight in kg"
                 />
-                {errors.age && (
-                  <p className="mt-1 text-sm text-red-600">{errors.age.message}</p>
+                {errors.weight && (
+                  <p className="mt-1 text-sm text-red-600">{errors.weight.message}</p>
                 )}
               </div>
             </div>
@@ -283,34 +306,49 @@ const Register = () => {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Dietary Preferences
               </label>
-              <div className="space-y-2">
-                <label className="flex items-center space-x-3 cursor-pointer">
-                  <input
+              <div className="space-y-3">
+                <div>
+                  <label htmlFor="dietaryPreferences.vegan" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Vegan
+                  </label>
+                  <select
                     {...registerForm('dietaryPreferences.vegan')}
-                    type="checkbox"
-                    value="vegan"
-                    className="w-5 h-5 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-                  />
-                  <span className="text-gray-700 dark:text-gray-300">Vegan</span>
-                </label>
-                <label className="flex items-center space-x-3 cursor-pointer">
-                  <input
+                    id="dietaryPreferences.vegan"
+                    className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all outline-none bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100"
+                  >
+                    <option value="">Select</option>
+                    <option value="yes">Yes</option>
+                    <option value="no">No</option>
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="dietaryPreferences.vegetarian" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Vegetarian
+                  </label>
+                  <select
                     {...registerForm('dietaryPreferences.vegetarian')}
-                    type="checkbox"
-                    value="vegetarian"
-                    className="w-5 h-5 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-                  />
-                  <span className="text-gray-700 dark:text-gray-300">Vegetarian</span>
-                </label>
-                <label className="flex items-center space-x-3 cursor-pointer">
-                  <input
+                    id="dietaryPreferences.vegetarian"
+                    className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all outline-none bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100"
+                  >
+                    <option value="">Select</option>
+                    <option value="yes">Yes</option>
+                    <option value="no">No</option>
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="dietaryPreferences.nonVegetarian" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Non-Vegetarian
+                  </label>
+                  <select
                     {...registerForm('dietaryPreferences.nonVegetarian')}
-                    type="checkbox"
-                    value="non-vegetarian"
-                    className="w-5 h-5 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-                  />
-                  <span className="text-gray-700 dark:text-gray-300">Non-Vegetarian</span>
-                </label>
+                    id="dietaryPreferences.nonVegetarian"
+                    className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all outline-none bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100"
+                  >
+                    <option value="">Select</option>
+                    <option value="yes">Yes</option>
+                    <option value="no">No</option>
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -329,34 +367,52 @@ const Register = () => {
               </h3>
             </div>
 
-            <div className="space-y-3">
-              <label className="flex items-center space-x-3 cursor-pointer">
-                <input
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="diabetes" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Do you have Diabetes?
+                </label>
+                <select
                   {...registerForm('diabetes')}
-                  type="checkbox"
-                  className="w-5 h-5 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-                />
-                <span className="text-gray-700 dark:text-gray-300">Do you have Diabetes?</span>
-              </label>
+                  id="diabetes"
+                  className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all outline-none bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100"
+                >
+                  <option value="">Select</option>
+                  <option value="yes">Yes</option>
+                  <option value="no">No</option>
+                </select>
+              </div>
 
-              <label className="flex items-center space-x-3 cursor-pointer">
-                <input
+              <div>
+                <label htmlFor="cholesterol" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Do you have Cholesterol issues?
+                </label>
+                <select
                   {...registerForm('cholesterol')}
-                  type="checkbox"
-                  className="w-5 h-5 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-                />
-                <span className="text-gray-700 dark:text-gray-300">Do you have Cholesterol issues?</span>
-              </label>
+                  id="cholesterol"
+                  className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all outline-none bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100"
+                >
+                  <option value="">Select</option>
+                  <option value="yes">Yes</option>
+                  <option value="no">No</option>
+                </select>
+              </div>
 
-              <label className="flex items-center space-x-3 cursor-pointer">
-                <input
+              <div>
+                <label htmlFor="otherMedical" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Other medical conditions
+                </label>
+                <select
                   {...registerForm('otherMedical')}
-                  type="checkbox"
-                  onChange={(e) => handleOtherMedicalChange(e.target.checked)}
-                  className="w-5 h-5 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-                />
-                <span className="text-gray-700 dark:text-gray-300">Other medical conditions</span>
-              </label>
+                  id="otherMedical"
+                  onChange={(e) => handleOtherMedicalChange(e.target.value)}
+                  className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all outline-none bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100"
+                >
+                  <option value="">Select</option>
+                  <option value="yes">Yes</option>
+                  <option value="no">No</option>
+                </select>
+              </div>
             </div>
 
             {showOtherMedical && (

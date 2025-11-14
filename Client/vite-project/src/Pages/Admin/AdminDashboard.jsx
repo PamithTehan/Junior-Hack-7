@@ -27,7 +27,7 @@ const AdminDashboard = () => {
   const [selectedRecipe, setSelectedRecipe] = useState(null);
   const [showAddFoodModal, setShowAddFoodModal] = useState(false);
   const [newFood, setNewFood] = useState({
-    name: { en: '', si: '', ta: '' },
+    name: { en: '' },
     type: '',
     nutrition: { calories: 0, protein: 0, carbohydrates: 0, fat: 0, fiber: 0 },
     servingSize: '100g',
@@ -165,9 +165,17 @@ const AdminDashboard = () => {
     e.preventDefault();
     try {
       const formData = new FormData();
-      formData.append('name', JSON.stringify(newFood.name));
+      formData.append('name', JSON.stringify({
+        en: newFood.name.en,
+        si: newFood.name.en,
+        ta: newFood.name.en,
+      }));
       formData.append('type', newFood.type);
-      formData.append('nutrition', JSON.stringify(newFood.nutrition));
+      formData.append('nutrition', JSON.stringify({
+        ...newFood.nutrition,
+        sugar: 0,
+        sodium: 0,
+      }));
       formData.append('servingSize', newFood.servingSize);
       if (newFood.image) {
         formData.append('image', newFood.image);
@@ -182,7 +190,7 @@ const AdminDashboard = () => {
       alert('Food added successfully!');
       setShowAddFoodModal(false);
       setNewFood({
-        name: { en: '', si: '', ta: '' },
+        name: { en: '' },
         type: '',
         nutrition: { calories: 0, protein: 0, carbohydrates: 0, fat: 0, fiber: 0 },
         servingSize: '100g',
@@ -891,25 +899,7 @@ const AdminDashboard = () => {
                     type="text"
                     required
                     value={newFood.name.en}
-                    onChange={(e) => setNewFood({ ...newFood, name: { ...newFood.name, en: e.target.value } })}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name (Sinhala)</label>
-                  <input
-                    type="text"
-                    value={newFood.name.si}
-                    onChange={(e) => setNewFood({ ...newFood, name: { ...newFood.name, si: e.target.value } })}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name (Tamil)</label>
-                  <input
-                    type="text"
-                    value={newFood.name.ta}
-                    onChange={(e) => setNewFood({ ...newFood, name: { ...newFood.name, ta: e.target.value } })}
+                    onChange={(e) => setNewFood({ ...newFood, name: { en: e.target.value } })}
                     className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100"
                   />
                 </div>

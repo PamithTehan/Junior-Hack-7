@@ -13,25 +13,32 @@ const generateToken = (id) => {
 // @access  Public
 exports.register = async (req, res) => {
   try {
-    const {
-      firstName,
-      lastName,
-      email,
-      password,
-      dateOfBirth,
-      age,
-      gender,
-      diabetes,
-      cholesterol,
-      otherMedicalStatus,
-      dietaryPreferences,
-    } = req.body;
+    // Log incoming request for debugging
+    console.log('Registration request received');
+    console.log('Request body keys:', Object.keys(req.body));
+    console.log('Files:', req.files ? req.files.length : 0);
+    
+    // Parse FormData fields (all come as strings when using FormData)
+    const firstName = req.body.firstName;
+    const lastName = req.body.lastName;
+    const email = req.body.email;
+    const password = req.body.password;
+    const dateOfBirth = req.body.dateOfBirth;
+    const height = req.body.height ? parseFloat(req.body.height) : null;
+    const weight = req.body.weight ? parseFloat(req.body.weight) : null;
+    const gender = req.body.gender;
+    // Parse diabetes and cholesterol (FormData sends booleans as strings 'true'/'false')
+    // Also handle 'yes' string from dropdown
+    const diabetes = req.body.diabetes === 'yes' || req.body.diabetes === 'true' || req.body.diabetes === true || req.body.diabetes === 'Yes';
+    const cholesterol = req.body.cholesterol === 'yes' || req.body.cholesterol === 'true' || req.body.cholesterol === true || req.body.cholesterol === 'Yes';
+    const otherMedicalStatus = req.body.otherMedicalStatus || '';
+    const dietaryPreferences = req.body.dietaryPreferences;
 
     // Validation - mandatory fields
-    if (!firstName || !lastName || !email || !password || !dateOfBirth || !age || !gender) {
+    if (!firstName || !lastName || !email || !password || !dateOfBirth || !height || !weight || !gender) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide all required fields: firstName, lastName, email, password, dateOfBirth, age, and gender',
+        message: 'Please provide all required fields: firstName, lastName, email, password, dateOfBirth, height, weight, and gender',
       });
     }
 
@@ -89,21 +96,78 @@ exports.register = async (req, res) => {
       }
     }
 
-    // Create user
-    const user = await User.create({
-      firstName,
-      lastName,
-      email,
-      password,
-      dateOfBirth: new Date(dateOfBirth),
-      age: parseInt(age),
-      gender,
-      diabetes: diabetes === true || diabetes === 'true',
-      cholesterol: cholesterol === true || cholesterol === 'true',
-      otherMedicalStatus: otherMedicalStatus || '',
-      dietaryPreferences: dietaryPrefs,
-      medicalReports,
-    });
+    // Validate required fields again after parsing
+    if (!firstName || !lastName || !email || !password || !dateOfBirth || !height || !weight || !gender) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide all required fields: firstName, lastName, email, password, dateOfBirth, height, weight, and gender',
+        debug: {
+          firstName: !!firstName,
+          lastName: !!lastName,
+          email: !!email,
+          password: !!password,
+          dateOfBirth: !!dateOfBirth,
+          height,
+          weight,
+          gender: !!gender,
+        },
+      });
+    }
+
+    // Validate height and weight are valid numbers
+    if (isNaN(height) || height <= 0 || height > 300) {
+      return res.status(400).json({
+        success: false,
+        message: 'Height must be a valid number between 1 and 300 cm',
+      });
+    }
+
+    if (isNaN(weight) || weight <= 0 || weight > 1000) {
+      return res.status(400).json({
+        success: false,
+        message: 'Weight must be a valid number between 1 and 1000 kg',
+      });
+    }
+
+    // Validate date of birth
+    const dateOfBirthObj = new Date(dateOfBirth);
+    if (isNaN(dateOfBirthObj.getTime())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid date of birth',
+      });
+    }
+
+    // Create user with health profile (height, weight will calculate BMI automatically)
+    let user;
+    try {
+      user = await User.create({
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: email.trim().toLowerCase(),
+        password,
+        dateOfBirth: dateOfBirthObj,
+        gender,
+        diabetes,
+        cholesterol,
+        otherMedicalStatus: otherMedicalStatus ? otherMedicalStatus.trim() : '',
+        dietaryPreferences: dietaryPrefs,
+        medicalReports,
+        healthProfile: {
+          height,
+          weight,
+          // Age and BMI will be calculated in the pre-save hook
+        },
+      });
+    } catch (createError) {
+      console.error('Error creating user:', createError);
+      console.error('User creation error details:', {
+        name: createError.name,
+        message: createError.message,
+        errors: createError.errors,
+      });
+      throw createError; // Re-throw to be caught by outer try-catch
+    }
 
     res.status(201).json({
       success: true,
@@ -116,10 +180,13 @@ exports.register = async (req, res) => {
       },
     });
   } catch (error) {
+    console.error('Registration error:', error);
+    console.error('Error stack:', error.stack);
     res.status(500).json({
       success: false,
       message: 'Error registering user',
       error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
     });
   }
 };
@@ -224,17 +291,38 @@ exports.updateProfile = async (req, res) => {
       { new: true, runValidators: true }
     );
 
+    // Age is recalculated in pre-save hook, but we need it for calorie calculation
+    // Ensure age is up-to-date before calculating calories
+    if (user.dateOfBirth) {
+      const today = new Date();
+      const birthDate = new Date(user.dateOfBirth);
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+      user.healthProfile.age = age;
+    }
+
     // Calculate daily calorie goal if needed
-    if (healthProfile && (healthProfile.weight || healthProfile.height || healthProfile.age)) {
+    if (healthProfile && (healthProfile.weight || healthProfile.height)) {
       // Harris-Benedict equation for calorie calculation
       const heightInMeters = user.healthProfile.height / 100;
       let bmr;
       
-      // Assuming male calculation (can be enhanced with gender)
+      // Use calculated age for calorie calculation
       if (user.healthProfile.age && user.healthProfile.weight && user.healthProfile.height) {
-        bmr = 88.362 + (13.397 * user.healthProfile.weight) + 
-              (4.799 * user.healthProfile.height) - 
-              (5.677 * user.healthProfile.age);
+        // Different BMR formulas for male and female
+        if (user.gender === 'female') {
+          bmr = 447.593 + (9.247 * user.healthProfile.weight) + 
+                (3.098 * user.healthProfile.height) - 
+                (4.330 * user.healthProfile.age);
+        } else {
+          // Male or other
+          bmr = 88.362 + (13.397 * user.healthProfile.weight) + 
+                (4.799 * user.healthProfile.height) - 
+                (5.677 * user.healthProfile.age);
+        }
         
         const activityMultipliers = {
           sedentary: 1.2,

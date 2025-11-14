@@ -17,7 +17,6 @@ import MealPlanner from './Pages/MealPlanner';
 import FoodTracker from './Pages/FoodTracker';
 import Recipes from './Pages/Recipes';
 import Profile from './Pages/Profile';
-import NutritionalCalculator from './Pages/NutritionalCalculator';
 import Scan from './Pages/Scan';
 import AdminLogin from './Pages/Admin/AdminLogin';
 import AdminSignup from './Pages/Admin/AdminSignup';
@@ -95,14 +94,6 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Recipes />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/calculator"
-              element={
-                <ProtectedRoute>
-                  <NutritionalCalculator />
                 </ProtectedRoute>
               }
             />

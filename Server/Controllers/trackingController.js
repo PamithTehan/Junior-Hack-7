@@ -1,5 +1,5 @@
 const DailyIntake = require('../Models/DailyIntake');
-const FoodItem = require('../Models/FoodItem');
+const Ingredient = require('../Models/Ingredient');
 
 // @desc    Get daily intake records
 // @route   GET /api/tracking
@@ -17,7 +17,7 @@ exports.getDailyIntakes = async (req, res) => {
     }
 
     const intakes = await DailyIntake.find(query)
-      .populate('foods.foodId', 'name nutrition servingSize image')
+      .populate('foods.foodId', 'name nutrition')
       .sort({ date: -1 });
 
     res.status(200).json({
@@ -48,7 +48,7 @@ exports.getDailyIntake = async (req, res) => {
         $gte: date,
         $lt: new Date(date.getTime() + 24 * 60 * 60 * 1000),
       },
-    }).populate('foods.foodId', 'name nutrition servingSize image');
+    }).populate('foods.foodId', 'name nutrition');
 
     if (!intake) {
       // Create empty intake if none exists
@@ -88,11 +88,11 @@ exports.addFood = async (req, res) => {
       });
     }
 
-    const food = await FoodItem.findById(foodId);
-    if (!food) {
+    const ingredient = await Ingredient.findById(foodId);
+    if (!ingredient) {
       return res.status(404).json({
         success: false,
-        message: 'Food item not found',
+        message: 'Ingredient not found',
       });
     }
 
@@ -113,22 +113,23 @@ exports.addFood = async (req, res) => {
         date: intakeDate,
         foods: [],
         totalCalories: 0,
-        totalNutrition: { calories: 0, protein: 0, carbs: 0, fat: 0 },
+        totalNutrition: { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 },
       });
     }
 
-    // Calculate nutrition for this food
+    // Calculate nutrition for this ingredient (per 100g, quantity is multiplier)
     const nutrition = {
-      calories: food.nutrition.calories * quantity,
-      protein: food.nutrition.protein * quantity,
-      carbs: food.nutrition.carbs * quantity,
-      fat: food.nutrition.fat * quantity,
+      calories: ingredient.nutrition.calories * quantity,
+      protein: ingredient.nutrition.proteins * quantity,
+      carbs: ingredient.nutrition.carbohydrates * quantity,
+      fat: ingredient.nutrition.fat * quantity,
+      fiber: (ingredient.nutrition.fiber || 0) * quantity,
     };
 
-    // Add food to intake
+    // Add ingredient to intake
     intake.foods.push({
-      foodId: food._id,
-      foodName: food.name.en,
+      foodId: ingredient._id,
+      foodName: ingredient.name,
       quantity,
       mealType,
       nutrition,
@@ -140,12 +141,16 @@ exports.addFood = async (req, res) => {
     intake.totalNutrition.protein += nutrition.protein;
     intake.totalNutrition.carbs += nutrition.carbs;
     intake.totalNutrition.fat += nutrition.fat;
+    if (intake.totalNutrition.fiber === undefined) {
+      intake.totalNutrition.fiber = 0;
+    }
+    intake.totalNutrition.fiber += nutrition.fiber;
     intake.totalCalories = intake.totalNutrition.calories;
 
     await intake.save();
 
     const populatedIntake = await DailyIntake.findById(intake._id)
-      .populate('foods.foodId', 'name nutrition servingSize image');
+      .populate('foods.foodId', 'name nutrition');
 
     // Emit real-time update via Socket.IO
     const io = req.app.get('io');
@@ -164,6 +169,101 @@ exports.addFood = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error adding food to intake',
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Add scanned food to daily intake (with direct nutrition data)
+// @route   POST /api/tracking/scan
+// @access  Private
+exports.addScannedFood = async (req, res) => {
+  try {
+    const { foodName, nutrition, quantity, mealType, date } = req.body;
+
+    if (!foodName || !nutrition || !quantity || !mealType) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide foodName, nutrition, quantity, and mealType',
+      });
+    }
+
+    const intakeDate = date ? new Date(date) : new Date();
+    intakeDate.setHours(0, 0, 0, 0);
+
+    let intake = await DailyIntake.findOne({
+      userId: req.user.id,
+      date: {
+        $gte: intakeDate,
+        $lt: new Date(intakeDate.getTime() + 24 * 60 * 60 * 1000),
+      },
+    });
+
+    if (!intake) {
+      intake = await DailyIntake.create({
+        userId: req.user.id,
+        date: intakeDate,
+        foods: [],
+        totalCalories: 0,
+        totalNutrition: { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 },
+      });
+    }
+
+    // Calculate nutrition for this food (only include: calories, carbs, protein, fiber, fat)
+    // Exclude sugar and sodium from scanned foods
+    const calculatedNutrition = {
+      calories: (nutrition.calories || 0) * quantity,
+      protein: (nutrition.protein || 0) * quantity,
+      carbs: (nutrition.carbs || nutrition.carbohydrates || 0) * quantity,
+      fat: (nutrition.fat || 0) * quantity,
+      fiber: (nutrition.fiber || 0) * quantity,
+      // Explicitly exclude sugar and sodium
+      sugar: 0,
+      sodium: 0,
+    };
+
+    // Add food to intake
+    intake.foods.push({
+      foodId: null, // No foodId for scanned foods
+      foodName: foodName,
+      quantity,
+      mealType,
+      nutrition: calculatedNutrition,
+      loggedAt: new Date(),
+    });
+
+    // Update total nutrition
+    intake.totalNutrition.calories += calculatedNutrition.calories;
+    intake.totalNutrition.protein += calculatedNutrition.protein;
+    intake.totalNutrition.carbs += calculatedNutrition.carbs;
+    intake.totalNutrition.fat += calculatedNutrition.fat;
+    if (intake.totalNutrition.fiber === undefined) {
+      intake.totalNutrition.fiber = 0;
+    }
+    intake.totalNutrition.fiber += calculatedNutrition.fiber;
+    intake.totalCalories = intake.totalNutrition.calories;
+
+    await intake.save();
+
+    const populatedIntake = await DailyIntake.findById(intake._id);
+
+    // Emit real-time update via Socket.IO
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`user:${req.user.id}`).emit('food:added', {
+        intake: populatedIntake,
+        food: populatedIntake.foods[populatedIntake.foods.length - 1],
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: populatedIntake,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error adding scanned food to intake',
       error: error.message,
     });
   }
@@ -299,7 +399,7 @@ exports.removeFood = async (req, res) => {
     await intake.save();
 
     const populatedIntake = await DailyIntake.findById(intake._id)
-      .populate('foods.foodId', 'name nutrition servingSize image');
+      .populate('foods.foodId', 'name nutrition');
 
     // Emit real-time update via Socket.IO
     const io = req.app.get('io');

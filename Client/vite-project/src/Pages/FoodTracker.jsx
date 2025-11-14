@@ -6,14 +6,14 @@ import {
   addFoodToIntake,
   removeFoodFromIntake,
 } from '../store/slices/mealSlice';
-import { fetchFoods } from '../store/slices/foodSlice';
+import { fetchIngredients } from '../store/slices/ingredientSlice';
 import { useSocket } from '../Contexts/SocketContext';
 import { format } from 'date-fns';
 
 const FoodTracker = () => {
   const dispatch = useDispatch();
   const { currentDailyIntake, loading } = useSelector((state) => state.meal);
-  const { foods } = useSelector((state) => state.food);
+  const { ingredients } = useSelector((state) => state.ingredient);
   const { socket, isConnected } = useSocket();
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [showAddForm, setShowAddForm] = useState(false);
@@ -23,7 +23,7 @@ const FoodTracker = () => {
 
   useEffect(() => {
     dispatch(fetchDailyIntake(selectedDate));
-    dispatch(fetchFoods({ limit: 100 }));
+    dispatch(fetchIngredients({ limit: 100 }));
   }, [dispatch, selectedDate]);
 
   // Listen for real-time updates
@@ -78,7 +78,7 @@ const FoodTracker = () => {
   const mealTypes = ['breakfast', 'lunch', 'dinner', 'snack'];
   const mealIcons = { breakfast: '🌅', lunch: '🍛', dinner: '🌙', snack: '🍎' };
 
-  const selectedFood = foods.find((f) => f._id === selectedFoodId);
+  const selectedFood = ingredients.find((f) => f._id === selectedFoodId);
 
   // Group foods by meal type
   const foodsByMeal = mealTypes.reduce((acc, mealType) => {
@@ -94,8 +94,9 @@ const FoodTracker = () => {
         protein: acc.protein + (food.nutrition?.protein || 0),
         carbs: acc.carbs + (food.nutrition?.carbs || 0),
         fat: acc.fat + (food.nutrition?.fat || 0),
+        fiber: acc.fiber + (food.nutrition?.fiber || 0),
       }),
-      { calories: 0, protein: 0, carbs: 0, fat: 0 }
+      { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 }
     );
   };
 
@@ -147,9 +148,9 @@ const FoodTracker = () => {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                 >
                   <option value="">Select food...</option>
-                  {foods.map((food) => (
-                    <option key={food._id} value={food._id}>
-                      {food.name.en}
+                  {ingredients.map((ingredient) => (
+                    <option key={ingredient._id} value={ingredient._id}>
+                      {ingredient.name}
                     </option>
                   ))}
                 </select>
@@ -246,7 +247,7 @@ const FoodTracker = () => {
           <h2 className="text-2xl font-bold text-gray-800 mb-4">
             Daily Summary - {format(new Date(selectedDate), 'MMMM d, yyyy')}
           </h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <div>
               <p className="text-sm text-gray-600">Total Calories</p>
               <p className="text-2xl font-bold text-primary-600">
@@ -254,15 +255,21 @@ const FoodTracker = () => {
               </p>
             </div>
             <div>
-              <p className="text-sm text-gray-600">Protein</p>
+              <p className="text-sm text-gray-600">Carbohydrates</p>
+              <p className="text-2xl font-bold text-orange-600">
+                {currentDailyIntake.totalNutrition?.carbs?.toFixed(0) || 0}g
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Proteins</p>
               <p className="text-2xl font-bold text-blue-600">
                 {currentDailyIntake.totalNutrition?.protein?.toFixed(0) || 0}g
               </p>
             </div>
             <div>
-              <p className="text-sm text-gray-600">Carbs</p>
-              <p className="text-2xl font-bold text-orange-600">
-                {currentDailyIntake.totalNutrition?.carbs?.toFixed(0) || 0}g
+              <p className="text-sm text-gray-600">Fibers</p>
+              <p className="text-2xl font-bold text-green-600">
+                {currentDailyIntake.totalNutrition?.fiber?.toFixed(0) || 0}g
               </p>
             </div>
             <div>
@@ -322,13 +329,28 @@ const FoodTracker = () => {
                           className="border-b pb-3 last:border-0 flex justify-between items-start"
                         >
                           <div className="flex-1">
-                            <p className="font-semibold text-gray-800 dark:text-gray-100">
-                              {food.foodName}
-                            </p>
+                            <div className="flex items-center gap-2">
+                              <p className="font-semibold text-gray-800 dark:text-gray-100">
+                                {food.foodName}
+                              </p>
+                              {!food.foodId && (
+                                <span className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 px-2 py-1 rounded">
+                                  Scanned
+                                </span>
+                              )}
+                            </div>
                             <p className="text-sm text-gray-600 dark:text-gray-400">
                               Quantity: {food.quantity}x |{' '}
                               {food.nutrition?.calories?.toFixed(0) || 0} kcal
                             </p>
+                            {food.nutrition && (
+                              <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                                Carbs: {food.nutrition.carbs?.toFixed(1) || 0}g | 
+                                Protein: {food.nutrition.protein?.toFixed(1) || 0}g | 
+                                Fiber: {food.nutrition.fiber?.toFixed(1) || 0}g | 
+                                Fat: {food.nutrition.fat?.toFixed(1) || 0}g
+                              </p>
+                            )}
                           </div>
                           <button
                             onClick={() => {
@@ -350,9 +372,7 @@ const FoodTracker = () => {
                   </div>
                   <div className="bg-gray-50 rounded p-3 text-sm">
                     <p className="text-gray-600">
-                      Total: {mealTotal.calories.toFixed(0)} kcal | P:{' '}
-                      {mealTotal.protein.toFixed(0)}g | C: {mealTotal.carbs.toFixed(0)}g | F:{' '}
-                      {mealTotal.fat.toFixed(0)}g
+                      Total: {mealTotal.calories.toFixed(0)} kcal | Carbs: {mealTotal.carbs.toFixed(0)}g | Protein: {mealTotal.protein.toFixed(0)}g | Fiber: {mealTotal.fiber.toFixed(0)}g | Fat: {mealTotal.fat.toFixed(0)}g
                     </p>
                   </div>
                 </>

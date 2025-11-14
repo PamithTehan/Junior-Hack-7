@@ -3,8 +3,8 @@ const mongoose = require('mongoose');
 const intakeItemSchema = new mongoose.Schema({
   foodId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'FoodItem',
-    required: true,
+    ref: 'Ingredient',
+    required: false, // Optional for scanned foods
   },
   foodName: { type: String, required: true },
   quantity: { type: Number, required: true }, // serving size multiplier
@@ -18,6 +18,7 @@ const intakeItemSchema = new mongoose.Schema({
     protein: Number,
     carbs: Number,
     fat: Number,
+    fiber: Number,
   },
   loggedAt: {
     type: Date,
@@ -46,6 +47,7 @@ const dailyIntakeSchema = new mongoose.Schema({
     protein: { type: Number, default: 0 },
     carbs: { type: Number, default: 0 },
     fat: { type: Number, default: 0 },
+    fiber: { type: Number, default: 0 },
   },
 }, {
   timestamps: true,

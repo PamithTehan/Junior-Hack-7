@@ -18,6 +18,7 @@ const nutritionGrid = document.getElementById('nutritionGrid');
 const errorMessage = document.getElementById('errorMessage');
 const resetBtn = document.getElementById('resetBtn');
 const errorResetBtn = document.getElementById('errorResetBtn');
+const addToTrackerBtn = document.getElementById('addToTrackerBtn');
 
 // Initialize on page load
 window.addEventListener('DOMContentLoaded', async () => {
@@ -83,6 +84,11 @@ function setupEventListeners() {
     // Reset buttons
     resetBtn.addEventListener('click', resetApp);
     errorResetBtn.addEventListener('click', resetApp);
+    
+    // Add to tracker button
+    if (addToTrackerBtn) {
+        addToTrackerBtn.addEventListener('click', handleAddToTracker);
+    }
 }
 
 // Handle file upload
@@ -281,7 +287,7 @@ function displayResults(prediction, nutrition) {
     foodName.textContent = formatFoodName(prediction.className);
     confidence.textContent = `Confidence: ${(prediction.probability * 100).toFixed(1)}%`;
     
-    // Display nutrition data
+    // Display nutrition data - only show: calories, carbohydrates, proteins, fibers, fat
     nutritionGrid.innerHTML = `
         <div class="nutrition-item">
             <div class="nutrition-label">Calories</div>
@@ -289,13 +295,18 @@ function displayResults(prediction, nutrition) {
             <div class="nutrition-unit">kcal</div>
         </div>
         <div class="nutrition-item">
-            <div class="nutrition-label">Protein</div>
+            <div class="nutrition-label">Carbohydrates</div>
+            <div class="nutrition-value">${nutrition.carbs}</div>
+            <div class="nutrition-unit">g</div>
+        </div>
+        <div class="nutrition-item">
+            <div class="nutrition-label">Proteins</div>
             <div class="nutrition-value">${nutrition.protein}</div>
             <div class="nutrition-unit">g</div>
         </div>
         <div class="nutrition-item">
-            <div class="nutrition-label">Carbs</div>
-            <div class="nutrition-value">${nutrition.carbs}</div>
+            <div class="nutrition-label">Fibers</div>
+            <div class="nutrition-value">${nutrition.fiber}</div>
             <div class="nutrition-unit">g</div>
         </div>
         <div class="nutrition-item">
@@ -303,22 +314,20 @@ function displayResults(prediction, nutrition) {
             <div class="nutrition-value">${nutrition.fat}</div>
             <div class="nutrition-unit">g</div>
         </div>
-        <div class="nutrition-item">
-            <div class="nutrition-label">Fiber</div>
-            <div class="nutrition-value">${nutrition.fiber}</div>
-            <div class="nutrition-unit">g</div>
-        </div>
-        <div class="nutrition-item">
-            <div class="nutrition-label">Sugar</div>
-            <div class="nutrition-value">${nutrition.sugar}</div>
-            <div class="nutrition-unit">g</div>
-        </div>
-        <div class="nutrition-item">
-            <div class="nutrition-label">Sodium</div>
-            <div class="nutrition-value">${nutrition.sodium}</div>
-            <div class="nutrition-unit">mg</div>
-        </div>
     `;
+    
+    // Store nutrition data globally for the add to tracker button
+    // Only include: calories, carbs, protein, fiber, fat (exclude sugar and sodium)
+    window.scannedNutritionData = {
+        foodName: formatFoodName(prediction.className),
+        nutrition: {
+            calories: nutrition.calories,
+            carbs: nutrition.carbs,
+            protein: nutrition.protein,
+            fiber: nutrition.fiber,
+            fat: nutrition.fat
+        }
+    };
     
     showSection(resultsSection);
 }
@@ -349,11 +358,32 @@ function showError(message) {
     showSection(errorSection);
 }
 
+// Handle add to tracker button
+async function handleAddToTracker() {
+    if (!window.scannedNutritionData) {
+        showError('No nutrition data available. Please scan an image first.');
+        return;
+    }
+
+    // Check if we're in an iframe (React app context)
+    if (window.parent && window.parent !== window) {
+        // Send message to parent window (React app)
+        window.parent.postMessage({
+            type: 'SCAN_ADD_TO_TRACKER',
+            data: window.scannedNutritionData
+        }, '*');
+    } else {
+        // Standalone mode - show alert
+        alert('Please use this feature from the main application. Nutrition data is ready to be added to your tracker.');
+    }
+}
+
 // Reset app
 function resetApp() {
     currentImage = null;
     previewImage.src = '';
     fileInput.value = '';
+    window.scannedNutritionData = null;
     showSection(uploadSection);
     
     // Reset processing steps

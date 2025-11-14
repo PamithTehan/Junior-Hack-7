@@ -1,5 +1,5 @@
 const MealPlan = require('../Models/MealPlan');
-const FoodItem = require('../Models/FoodItem');
+const Ingredient = require('../Models/Ingredient');
 const User = require('../Models/User');
 
 // @desc    Get meal plans for user
@@ -18,7 +18,7 @@ exports.getMealPlans = async (req, res) => {
     }
 
     const mealPlans = await MealPlan.find(query)
-      .populate('meals.items.foodId', 'name nutrition servingSize image')
+      .populate('meals.items.foodId', 'name nutrition')
       .sort({ date: -1 });
 
     res.status(200).json({
@@ -97,15 +97,12 @@ exports.generateMealPlan = async (req, res) => {
       foodQuery.tags = { $in: ['heart-healthy'] };
     }
 
-    const availableFoods = await FoodItem.find({
-      ...foodQuery,
-      isTraditional: true,
-    }).limit(50);
+    const availableIngredients = await Ingredient.find(foodQuery).limit(50);
 
-    if (availableFoods.length === 0) {
+    if (availableIngredients.length === 0) {
       return res.status(400).json({
         success: false,
-        message: 'No suitable foods found for your health profile',
+        message: 'No suitable ingredients found for your health profile',
       });
     }
 
@@ -115,12 +112,12 @@ exports.generateMealPlan = async (req, res) => {
 
     for (const mealType of mealTypes) {
       const mealCalories = targetCalories * calorieDistribution[mealType];
-      const mealItems = selectFoodsForMeal(availableFoods, mealCalories, mealType);
+      const mealItems = selectIngredientsForMeal(availableIngredients, mealCalories, mealType);
       
       const totalNutrition = mealItems.reduce((acc, item) => ({
         calories: acc.calories + (item.nutrition.calories * item.quantity),
-        protein: acc.protein + (item.nutrition.protein * item.quantity),
-        carbs: acc.carbs + (item.nutrition.carbs * item.quantity),
+        protein: acc.protein + (item.nutrition.proteins * item.quantity),
+        carbs: acc.carbs + (item.nutrition.carbohydrates * item.quantity),
         fat: acc.fat + (item.nutrition.fat * item.quantity),
       }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
 
@@ -159,7 +156,7 @@ exports.generateMealPlan = async (req, res) => {
     }
 
     const populatedMealPlan = await MealPlan.findById(mealPlan._id)
-      .populate('meals.items.foodId', 'name nutrition servingSize image');
+      .populate('meals.items.foodId', 'name nutrition');
 
     res.status(200).json({
       success: true,
@@ -186,13 +183,13 @@ exports.createMealPlan = async (req, res) => {
     
     for (const meal of meals) {
       for (const item of meal.items) {
-        const food = await FoodItem.findById(item.foodId);
-        if (food) {
+        const ingredient = await Ingredient.findById(item.foodId);
+        if (ingredient) {
           const quantity = item.quantity || 1;
-          totalNutrition.calories += food.nutrition.calories * quantity;
-          totalNutrition.protein += food.nutrition.protein * quantity;
-          totalNutrition.carbs += food.nutrition.carbs * quantity;
-          totalNutrition.fat += food.nutrition.fat * quantity;
+          totalNutrition.calories += ingredient.nutrition.calories * quantity;
+          totalNutrition.protein += ingredient.nutrition.proteins * quantity;
+          totalNutrition.carbs += ingredient.nutrition.carbohydrates * quantity;
+          totalNutrition.fat += ingredient.nutrition.fat * quantity;
         }
       }
     }
@@ -218,7 +215,7 @@ exports.createMealPlan = async (req, res) => {
     }
 
     const populatedMealPlan = await MealPlan.findById(mealPlan._id)
-      .populate('meals.items.foodId', 'name nutrition servingSize image');
+      .populate('meals.items.foodId', 'name nutrition');
 
     res.status(200).json({
       success: true,
@@ -233,45 +230,45 @@ exports.createMealPlan = async (req, res) => {
   }
 };
 
-// Helper function to select foods for a meal
-function selectFoodsForMeal(foods, targetCalories, mealType) {
+// Helper function to select ingredients for a meal
+function selectIngredientsForMeal(ingredients, targetCalories, mealType) {
   const mealItems = [];
   let currentCalories = 0;
-  const selectedFoods = new Set();
+  const selectedIngredients = new Set();
 
-  // Filter foods appropriate for meal type
-  const appropriateFoods = foods.filter(food => {
+  // Filter ingredients appropriate for meal type
+  const appropriateIngredients = ingredients.filter(ingredient => {
     if (mealType === 'breakfast') {
-      return food.category === 'bread' || food.category === 'rice' || food.tags?.includes('breakfast');
+      return ingredient.category === 'grains' || ingredient.category === 'dairy' || ingredient.tags?.includes('breakfast');
     }
     return true;
   });
 
   // Simple selection algorithm
-  const shuffled = [...appropriateFoods].sort(() => Math.random() - 0.5);
+  const shuffled = [...appropriateIngredients].sort(() => Math.random() - 0.5);
   
-  for (const food of shuffled) {
+  for (const ingredient of shuffled) {
     if (currentCalories >= targetCalories * 0.9) break; // 90% of target
-    if (selectedFoods.has(food._id.toString())) continue;
+    if (selectedIngredients.has(ingredient._id.toString())) continue;
 
-    const caloriesPerServing = food.nutrition.calories;
+    const caloriesPerServing = ingredient.nutrition.calories;
     const quantity = Math.min(2, Math.ceil((targetCalories - currentCalories) / caloriesPerServing));
 
     if (quantity > 0) {
       mealItems.push({
-        foodId: food._id,
-        foodName: food.name.en,
+        foodId: ingredient._id,
+        foodName: ingredient.name,
         quantity: quantity,
         nutrition: {
-          calories: food.nutrition.calories,
-          protein: food.nutrition.protein,
-          carbs: food.nutrition.carbs,
-          fat: food.nutrition.fat,
+          calories: ingredient.nutrition.calories,
+          protein: ingredient.nutrition.proteins,
+          carbs: ingredient.nutrition.carbohydrates,
+          fat: ingredient.nutrition.fat,
         },
       });
 
       currentCalories += caloriesPerServing * quantity;
-      selectedFoods.add(food._id.toString());
+      selectedIngredients.add(ingredient._id.toString());
     }
   }
 

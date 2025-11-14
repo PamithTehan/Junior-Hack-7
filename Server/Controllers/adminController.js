@@ -1,6 +1,6 @@
 const Admin = require('../Models/Admin');
 const User = require('../Models/User');
-const Food = require('../Models/Food');
+const Ingredient = require('../Models/Ingredient');
 const Recipe = require('../Models/Recipe');
 const jwt = require('jsonwebtoken');
 
@@ -223,19 +223,17 @@ exports.getMe = async (req, res) => {
 exports.getStats = async (req, res) => {
   try {
     const totalUsers = await User.countDocuments({ role: 'user' });
-    const totalFoods = await Food.countDocuments();
+    const totalIngredients = await Ingredient.countDocuments();
     const totalRecipes = await Recipe.countDocuments();
     const pendingApprovals = await Admin.countDocuments({ isApproved: false });
-    const pendingRecipes = await Recipe.countDocuments({ isApproved: false });
 
     res.status(200).json({
       success: true,
       stats: {
         totalUsers,
-        totalFoods,
+        totalIngredients,
         totalRecipes,
         pendingApprovals,
-        pendingRecipes,
       },
     });
   } catch (error) {
