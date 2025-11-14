@@ -17,5 +17,45 @@ router.get('/me', protect, getMe);
 router.put('/profile', protect, updateProfile);
 router.post('/logout', protect, logout);
 
+// @desc    Check email availability
+// @route   GET /api/auth/check-email/:email
+// @access  Public
+router.get('/check-email/:email', async (req, res) => {
+  try {
+    const { email } = req.params;
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(normalizedEmail)) {
+      return res.status(400).json({
+        success: false,
+        available: false,
+        message: 'Invalid email format',
+      });
+    }
+
+    // Check if email exists
+    const User = require('../Models/User');
+    const existingUser = await User.findOne({ email: normalizedEmail });
+
+    res.status(200).json({
+      success: true,
+      available: !existingUser,
+      email: normalizedEmail,
+      message: existingUser 
+        ? 'This email is already registered' 
+        : 'This email is available',
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      available: false,
+      message: 'Error checking email availability',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
+  }
+});
+
 module.exports = router;
 

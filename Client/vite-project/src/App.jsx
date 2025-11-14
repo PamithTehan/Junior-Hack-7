@@ -16,8 +16,10 @@ import FoodDatabase from './Pages/FoodDatabase';
 import MealPlanner from './Pages/MealPlanner';
 import FoodTracker from './Pages/FoodTracker';
 import Recipes from './Pages/Recipes';
+import Awareness from './Pages/Awareness';
 import Profile from './Pages/Profile';
 import Scan from './Pages/Scan';
+import MeetExpert from './Pages/MeetExpert';
 import AdminLogin from './Pages/Admin/AdminLogin';
 import AdminSignup from './Pages/Admin/AdminSignup';
 import AdminDashboard from './Pages/Admin/AdminDashboard';
@@ -97,6 +99,8 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            <Route path="/awareness" element={<Awareness />} />
+            <Route path="/meet-expert" element={<MeetExpert />} />
             <Route path="/scan" element={<Scan />} />
             <Route
               path="/profile"

@@ -1,21 +1,75 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { useDispatch, useSelector } from 'react-redux';
-import { register, clearError } from '../../store/slices/authSlice';
+import { register, clearError, checkEmailAvailability } from '../../store/slices/authSlice';
 import { useTranslation } from '../../Hooks/useTranslation';
+import {
+  GENDER_OPTIONS,
+  YES_NO_OPTIONS,
+  DIETARY_PREFERENCE_OPTIONS,
+} from '../../constants/formOptions';
+import { generateUniqueEmail } from '../../utils/testHelpers';
 
 const Register = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { loading, error, isAuthenticated } = useSelector((state) => state.auth);
-  const { register: registerForm, handleSubmit, formState: { errors }, watch } = useForm();
+  const { register: registerForm, handleSubmit, formState: { errors }, watch, getValues } = useForm();
   const { t } = useTranslation();
   
   const [step, setStep] = useState(1);
   const [medicalReports, setMedicalReports] = useState([]);
   const [showOtherMedical, setShowOtherMedical] = useState(false);
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
+  const [emailAvailability, setEmailAvailability] = useState(null); // null, 'checking', 'available', 'taken'
+  const [emailCheckTimeout, setEmailCheckTimeout] = useState(null);
+
+  // Watch email field for real-time availability checking
+  const watchedEmail = watch('email');
+
+  // Real-time email availability check with debounce
+  useEffect(() => {
+    // Clear previous timeout
+    if (emailCheckTimeout) {
+      clearTimeout(emailCheckTimeout);
+    }
+
+    // Validate email format before checking
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!watchedEmail || !emailRegex.test(watchedEmail.trim())) {
+      setEmailAvailability(null);
+      return;
+    }
+
+    // Set checking state
+    setEmailAvailability('checking');
+
+    // Debounce email check (wait 800ms after user stops typing)
+    const timeout = setTimeout(async () => {
+      try {
+        const result = await dispatch(checkEmailAvailability(watchedEmail.trim())).unwrap();
+        setEmailAvailability(result.available ? 'available' : 'taken');
+      } catch (error) {
+        console.error('Email check error:', error);
+        setEmailAvailability(null);
+      }
+    }, 800);
+
+    setEmailCheckTimeout(timeout);
+
+    // Cleanup
+    return () => {
+      if (timeout) clearTimeout(timeout);
+    };
+  }, [watchedEmail, dispatch]);
+
+  // Clear email availability when error is cleared
+  useEffect(() => {
+    if (!error) {
+      setEmailAvailability(null);
+    }
+  }, [error]);
 
   // Watch for otherMedical dropdown
   const handleOtherMedicalChange = (value) => {
@@ -39,27 +93,48 @@ const Register = () => {
   };
 
   const onStep2Submit = async (data) => {
+    // Clear any previous errors
+    dispatch(clearError());
+    
+    // Get all form values (both step 1 and step 2)
+    const allFormData = getValues();
+    
+    // Validate that all required fields from step 1 are present
+    if (!allFormData.firstName || !allFormData.lastName || !allFormData.email || 
+        !allFormData.password || !allFormData.dateOfBirth || !allFormData.height || 
+        !allFormData.weight || !allFormData.gender) {
+      dispatch(clearError());
+      // Go back to step 1 if required fields are missing
+      setStep(1);
+      return;
+    }
+    
+    // Clear error before attempting registration
+    dispatch(clearError());
+    
     // Create FormData for file upload
     const formData = new FormData();
     
-    // Add all form fields
-    formData.append('firstName', data.firstName);
-    formData.append('lastName', data.lastName);
-    formData.append('email', data.email);
-    formData.append('password', data.password);
-    formData.append('dateOfBirth', data.dateOfBirth);
-    formData.append('height', data.height);
-    formData.append('weight', data.weight);
-    formData.append('gender', data.gender);
-    formData.append('diabetes', data.diabetes === 'yes' || false);
-    formData.append('cholesterol', data.cholesterol === 'yes' || false);
-    formData.append('otherMedicalStatus', data.otherMedicalStatus || '');
+    // Add all form fields from both steps
+    formData.append('firstName', allFormData.firstName.trim());
+    formData.append('lastName', allFormData.lastName.trim());
+    formData.append('email', allFormData.email.trim().toLowerCase());
+    formData.append('password', allFormData.password);
+    formData.append('dateOfBirth', allFormData.dateOfBirth);
+    formData.append('height', String(allFormData.height));
+    formData.append('weight', String(allFormData.weight));
+    formData.append('gender', allFormData.gender);
+    
+    // Handle diabetes and cholesterol - send 'yes' or empty string
+    formData.append('diabetes', allFormData.diabetes === 'yes' ? 'yes' : '');
+    formData.append('cholesterol', allFormData.cholesterol === 'yes' ? 'yes' : '');
+    formData.append('otherMedicalStatus', allFormData.otherMedicalStatus || '');
 
     // Add dietary preferences
     const dietaryPreferences = [];
-    if (data.dietaryPreferences?.vegan === 'yes') dietaryPreferences.push('vegan');
-    if (data.dietaryPreferences?.vegetarian === 'yes') dietaryPreferences.push('vegetarian');
-    if (data.dietaryPreferences?.nonVegetarian === 'yes') dietaryPreferences.push('non-vegetarian');
+    if (allFormData.dietaryPreferences?.vegan === 'yes') dietaryPreferences.push('vegan');
+    if (allFormData.dietaryPreferences?.vegetarian === 'yes') dietaryPreferences.push('vegetarian');
+    if (allFormData.dietaryPreferences?.nonVegetarian === 'yes') dietaryPreferences.push('non-vegetarian');
     // Send as array
     if (dietaryPreferences.length > 0) {
       formData.append('dietaryPreferences', JSON.stringify(dietaryPreferences));
@@ -72,11 +147,15 @@ const Register = () => {
 
     try {
       const result = await dispatch(register(formData));
+      
       if (result.type === 'auth/register/fulfilled') {
         setRegistrationSuccess(true);
         setTimeout(() => {
           navigate('/login', { replace: true });
         }, 3000);
+      } else if (result.type === 'auth/register/rejected') {
+        // Error is already set in the Redux state, will be displayed automatically
+        console.error('Registration failed:', result.payload);
       }
     } catch (err) {
       console.error('Registration error:', err);
@@ -127,8 +206,57 @@ const Register = () => {
         </div>
 
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {error}
+          <div className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 text-red-700 dark:text-red-400 px-4 py-3 rounded mb-4 animate-fade-in">
+            <div className="flex items-start">
+              <svg className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+              <div className="flex-1">
+                <p className="font-semibold mb-1">Registration Error</p>
+                <p className="text-sm">{error}</p>
+                {(error.includes('already exists') || error.includes('already registered')) && (
+                  <div className="mt-2 space-y-1">
+                    <p className="text-xs">
+                      This email address is already in use. Please choose a different email or{' '}
+                      <Link to="/login" className="underline font-semibold hover:text-red-800 dark:hover:text-red-300">
+                        login here
+                      </Link>
+                      {' '}if this is your account.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        dispatch(clearError());
+                        setStep(1);
+                        // Generate a unique email for testing
+                        if (process.env.NODE_ENV === 'development') {
+                          const uniqueEmail = generateUniqueEmail();
+                          registerForm('email', { value: uniqueEmail });
+                        }
+                      }}
+                      className="text-xs underline hover:text-red-800 dark:hover:text-red-300 font-medium"
+                    >
+                      {process.env.NODE_ENV === 'development' ? 'Use unique test email' : 'Go back and change email'}
+                    </button>
+                  </div>
+                )}
+                {error.includes('Validation failed') && (
+                  <p className="text-xs mt-2">
+                    Please check all fields and ensure they meet the requirements.
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => dispatch(clearError())}
+                className="ml-2 text-red-500 hover:text-red-700 dark:hover:text-red-300"
+                aria-label="Close error"
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </div>
           </div>
         )}
 
@@ -176,21 +304,79 @@ const Register = () => {
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Email <span className="text-red-500">*</span>
               </label>
-              <input
-                {...registerForm('email', {
-                  required: 'Email is required',
-                  pattern: {
-                    value: /^\S+@\S+\.\S+$/,
-                    message: 'Invalid email address',
-                  },
-                })}
-                type="email"
-                id="email"
-                className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all outline-none bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100"
-                placeholder="Enter your email"
-              />
+              <div className="relative">
+                <input
+                  {...registerForm('email', {
+                    required: 'Email is required',
+                    pattern: {
+                      value: /^\S+@\S+\.\S+$/,
+                      message: 'Invalid email address',
+                    },
+                    onChange: () => {
+                      // Clear error when user changes email
+                      if (error && (error.includes('already exists') || error.includes('already registered'))) {
+                        dispatch(clearError());
+                      }
+                      setEmailAvailability(null);
+                    },
+                  })}
+                  type="email"
+                  id="email"
+                  className={`w-full px-4 py-3 pr-12 border-2 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all outline-none bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 ${
+                    emailAvailability === 'available'
+                      ? 'border-green-500 dark:border-green-600'
+                      : emailAvailability === 'taken'
+                      ? 'border-red-500 dark:border-red-600'
+                      : 'border-gray-200 dark:border-gray-600'
+                  }`}
+                  placeholder="Enter your email"
+                />
+                {/* Email availability indicator */}
+                {watchedEmail && watchedEmail.trim() && (
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    {emailAvailability === 'checking' && (
+                      <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-primary-500"></div>
+                    )}
+                    {emailAvailability === 'available' && (
+                      <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                    {emailAvailability === 'taken' && (
+                      <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    )}
+                  </div>
+                )}
+              </div>
+              {/* Email validation messages */}
               {errors.email && (
                 <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
+              )}
+              {emailAvailability === 'available' && !errors.email && (
+                <p className="mt-1 text-sm text-green-600">✓ This email is available</p>
+              )}
+              {emailAvailability === 'taken' && !errors.email && (
+                <p className="mt-1 text-sm text-red-600">
+                  ✗ This email is already registered. Please use a different email or{' '}
+                  <Link to="/login" className="underline font-semibold">
+                    login here
+                  </Link>
+                </p>
+              )}
+              {/* Test helper button (development only) */}
+              {process.env.NODE_ENV === 'development' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const uniqueEmail = generateUniqueEmail();
+                    registerForm('email', { value: uniqueEmail });
+                  }}
+                  className="mt-2 text-xs text-blue-600 hover:text-blue-800 underline"
+                >
+                  Generate Unique Test Email
+                </button>
               )}
             </div>
 
@@ -271,9 +457,11 @@ const Register = () => {
                 className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all outline-none bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100"
               >
                 <option value="">Select gender</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-                <option value="other">Other</option>
+                {GENDER_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
               {errors.gender && (
                 <p className="mt-1 text-sm text-red-600">{errors.gender.message}</p>
@@ -307,48 +495,30 @@ const Register = () => {
                 Dietary Preferences
               </label>
               <div className="space-y-3">
-                <div>
-                  <label htmlFor="dietaryPreferences.vegan" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Vegan
-                  </label>
-                  <select
-                    {...registerForm('dietaryPreferences.vegan')}
-                    id="dietaryPreferences.vegan"
-                    className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all outline-none bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100"
-                  >
-                    <option value="">Select</option>
-                    <option value="yes">Yes</option>
-                    <option value="no">No</option>
-                  </select>
-                </div>
-                <div>
-                  <label htmlFor="dietaryPreferences.vegetarian" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Vegetarian
-                  </label>
-                  <select
-                    {...registerForm('dietaryPreferences.vegetarian')}
-                    id="dietaryPreferences.vegetarian"
-                    className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all outline-none bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100"
-                  >
-                    <option value="">Select</option>
-                    <option value="yes">Yes</option>
-                    <option value="no">No</option>
-                  </select>
-                </div>
-                <div>
-                  <label htmlFor="dietaryPreferences.nonVegetarian" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Non-Vegetarian
-                  </label>
-                  <select
-                    {...registerForm('dietaryPreferences.nonVegetarian')}
-                    id="dietaryPreferences.nonVegetarian"
-                    className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all outline-none bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100"
-                  >
-                    <option value="">Select</option>
-                    <option value="yes">Yes</option>
-                    <option value="no">No</option>
-                  </select>
-                </div>
+                {DIETARY_PREFERENCE_OPTIONS.map((pref) => {
+                  const fieldKey = pref.value === 'non-vegetarian' ? 'nonVegetarian' : pref.value;
+                  return (
+                    <div key={pref.value}>
+                      <label 
+                        htmlFor={`dietaryPreferences.${fieldKey}`} 
+                        className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                      >
+                        {pref.label}
+                      </label>
+                      <select
+                        {...registerForm(`dietaryPreferences.${fieldKey}`)}
+                        id={`dietaryPreferences.${fieldKey}`}
+                        className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all outline-none bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100"
+                      >
+                        {YES_NO_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -377,9 +547,11 @@ const Register = () => {
                   id="diabetes"
                   className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all outline-none bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100"
                 >
-                  <option value="">Select</option>
-                  <option value="yes">Yes</option>
-                  <option value="no">No</option>
+                  {YES_NO_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -392,9 +564,11 @@ const Register = () => {
                   id="cholesterol"
                   className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all outline-none bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100"
                 >
-                  <option value="">Select</option>
-                  <option value="yes">Yes</option>
-                  <option value="no">No</option>
+                  {YES_NO_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -408,9 +582,11 @@ const Register = () => {
                   onChange={(e) => handleOtherMedicalChange(e.target.value)}
                   className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all outline-none bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100"
                 >
-                  <option value="">Select</option>
-                  <option value="yes">Yes</option>
-                  <option value="no">No</option>
+                  {YES_NO_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>

@@ -15,6 +15,7 @@ const AdminDashboard = () => {
   const [users, setUsers] = useState([]);
   const [foods, setFoods] = useState([]);
   const [recipes, setRecipes] = useState([]);
+  const [articles, setArticles] = useState([]);
   const [allAdmins, setAllAdmins] = useState([]);
   const [loading, setLoading] = useState(false);
   
@@ -23,8 +24,19 @@ const AdminDashboard = () => {
   const [foodType, setFoodType] = useState('');
   const [recipeSearch, setRecipeSearch] = useState('');
   const [recipeCategory, setRecipeCategory] = useState('');
+  const [articleSearch, setArticleSearch] = useState('');
+  const [articleStatus, setArticleStatus] = useState('');
   const [selectedFood, setSelectedFood] = useState(null);
   const [selectedRecipe, setSelectedRecipe] = useState(null);
+  const [selectedArticle, setSelectedArticle] = useState(null);
+  const [showEditArticleModal, setShowEditArticleModal] = useState(false);
+  const [editArticleData, setEditArticleData] = useState({
+    topic: '',
+    body: '',
+    summary: '',
+    photo: null,
+    video: null,
+  });
   const [showAddFoodModal, setShowAddFoodModal] = useState(false);
   const [newFood, setNewFood] = useState({
     name: { en: '' },
@@ -92,6 +104,23 @@ const AdminDashboard = () => {
     }
   }, [recipeSearch, recipeCategory]);
 
+  const fetchArticles = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (articleSearch) params.append('search', articleSearch);
+      if (articleStatus) params.append('status', articleStatus);
+      params.append('limit', '100');
+      
+      const response = await axios.get(`${API_URL}/articles/admin/all?${params.toString()}`);
+      setArticles(response.data.data);
+    } catch (error) {
+      console.error('Error fetching articles:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [articleSearch, articleStatus]);
+
   const fetchAllAdmins = async () => {
     try {
       const response = await axios.get(`${API_URL}/admin/all-admins`);
@@ -118,8 +147,9 @@ const AdminDashboard = () => {
     if (activeTab === 'users') fetchUsers();
     if (activeTab === 'foods') fetchFoods();
     if (activeTab === 'recipes') fetchRecipes();
+    if (activeTab === 'articles') fetchArticles();
     if (activeTab === 'admin-management' && admin?.role === 'master') fetchAllAdmins();
-  }, [activeTab, admin?.role, fetchFoods, fetchRecipes]);
+  }, [activeTab, admin?.role, fetchFoods, fetchRecipes, fetchArticles]);
 
   useEffect(() => {
     if (activeTab === 'foods') {
@@ -138,6 +168,15 @@ const AdminDashboard = () => {
       return () => clearTimeout(timeoutId);
     }
   }, [activeTab, fetchRecipes]);
+
+  useEffect(() => {
+    if (activeTab === 'articles') {
+      const timeoutId = setTimeout(() => {
+        fetchArticles();
+      }, 300);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [activeTab, fetchArticles]);
 
   const handleDeleteUser = async (userId) => {
     if (!window.confirm('Are you sure you want to delete this user?')) return;
@@ -220,6 +259,73 @@ const AdminDashboard = () => {
       alert('Recipe approved successfully');
     } catch (error) {
       alert('Error approving recipe: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
+  const handleApproveArticle = async (articleId) => {
+    try {
+      await axios.put(`${API_URL}/articles/${articleId}/approve`);
+      fetchArticles();
+      alert('Article approved successfully');
+    } catch (error) {
+      alert('Error approving article: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
+  const handleDeleteArticle = async (articleId) => {
+    if (!window.confirm('Are you sure you want to delete this article?')) return;
+    try {
+      await axios.delete(`${API_URL}/articles/${articleId}`);
+      fetchArticles();
+      alert('Article deleted successfully');
+    } catch (error) {
+      alert('Error deleting article: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
+  const handleEditArticle = (article) => {
+    setSelectedArticle(article);
+    setEditArticleData({
+      topic: article.topic,
+      body: article.body,
+      summary: article.summary || '',
+      photo: null,
+      video: null,
+    });
+    setShowEditArticleModal(true);
+  };
+
+  const handleSaveArticleEdit = async (e) => {
+    e.preventDefault();
+    try {
+      const formData = new FormData();
+      formData.append('topic', editArticleData.topic);
+      formData.append('body', editArticleData.body);
+      if (editArticleData.summary) formData.append('summary', editArticleData.summary);
+      if (editArticleData.photo) formData.append('photo', editArticleData.photo);
+      if (editArticleData.video) formData.append('video', editArticleData.video);
+
+      await axios.put(`${API_URL}/articles/${selectedArticle._id}/admin-edit`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      fetchArticles();
+      alert('Article edited successfully');
+      setShowEditArticleModal(false);
+      setSelectedArticle(null);
+    } catch (error) {
+      alert('Error editing article: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
+  const handleApproveEditRequest = async (articleId, requestId) => {
+    try {
+      await axios.put(`${API_URL}/articles/${articleId}/approve-edit/${requestId}`);
+      fetchArticles();
+      alert('Edit request approved successfully');
+    } catch (error) {
+      alert('Error approving edit request: ' + (error.response?.data?.message || error.message));
     }
   };
 
@@ -317,6 +423,21 @@ const AdminDashboard = () => {
               }`}
             >
               Recipes
+            </button>
+            <button
+              onClick={() => setActiveTab('articles')}
+              className={`px-6 py-3 font-medium transition-colors ${
+                activeTab === 'articles'
+                  ? 'text-primary-600 border-b-2 border-primary-600'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-primary-600'
+              }`}
+            >
+              Articles
+              {articles.filter(a => !a.isApproved).length > 0 && (
+                <span className="ml-2 bg-yellow-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                  {articles.filter(a => !a.isApproved).length}
+                </span>
+              )}
             </button>
             {admin?.role === 'master' && (
               <button
@@ -682,6 +803,134 @@ const AdminDashboard = () => {
           </div>
         )}
 
+        {/* Articles Tab */}
+        {activeTab === 'articles' && (
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Articles Management</h2>
+            </div>
+            
+            {/* Search and Filter */}
+            <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <input
+                  type="text"
+                  placeholder="Search articles..."
+                  value={articleSearch}
+                  onChange={(e) => setArticleSearch(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100"
+                />
+              </div>
+              <div>
+                <select
+                  value={articleStatus}
+                  onChange={(e) => setArticleStatus(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100"
+                >
+                  <option value="">All Articles</option>
+                  <option value="pending">Pending Approval</option>
+                  <option value="approved">Approved</option>
+                </select>
+              </div>
+            </div>
+
+            {loading ? (
+              <div className="text-center py-8">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-500"></div>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-200 dark:border-gray-700">
+                      <th className="text-left py-3 px-4 text-gray-700 dark:text-gray-300">Topic</th>
+                      <th className="text-left py-3 px-4 text-gray-700 dark:text-gray-300">Author</th>
+                      <th className="text-left py-3 px-4 text-gray-700 dark:text-gray-300">Status</th>
+                      <th className="text-left py-3 px-4 text-gray-700 dark:text-gray-300">Created</th>
+                      <th className="text-left py-3 px-4 text-gray-700 dark:text-gray-300">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {articles.map((article) => (
+                      <tr key={article._id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <td className="py-3 px-4 text-gray-800 dark:text-gray-100">
+                          <div className="flex items-center space-x-2">
+                            <span className="font-semibold">{article.topic}</span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-gray-800 dark:text-gray-100">
+                          {article.authorName || article.author?.name || 'Unknown'}
+                        </td>
+                        <td className="py-3 px-4">
+                          {article.isApproved === false ? (
+                            <span className="text-yellow-600 dark:text-yellow-400">Pending</span>
+                          ) : (
+                            <span className="text-green-600 dark:text-green-400">Approved</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-gray-800 dark:text-gray-100">
+                          {new Date(article.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex space-x-2">
+                            {article.isApproved === false && (
+                              <>
+                                <button
+                                  onClick={() => handleEditArticle(article)}
+                                  className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition-colors text-sm"
+                                >
+                                  Edit Before Approve
+                                </button>
+                                <button
+                                  onClick={() => handleApproveArticle(article._id)}
+                                  className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 transition-colors text-sm"
+                                >
+                                  Approve
+                                </button>
+                              </>
+                            )}
+                            {article.isApproved && (
+                              <button
+                                onClick={() => handleEditArticle(article)}
+                                className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition-colors text-sm"
+                              >
+                                Edit
+                              </button>
+                            )}
+                            {article.editRequests && article.editRequests.filter(req => !req.approved).length > 0 && (
+                              <button
+                                onClick={() => {
+                                  const pendingReq = article.editRequests.find(req => !req.approved);
+                                  if (pendingReq) {
+                                    handleApproveEditRequest(article._id, pendingReq._id);
+                                  }
+                                }}
+                                className="bg-purple-600 text-white px-3 py-1 rounded hover:bg-purple-700 transition-colors text-sm"
+                                title="Approve Edit Request"
+                              >
+                                Approve Edit
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleDeleteArticle(article._id)}
+                              className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 transition-colors text-sm"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {articles.length === 0 && (
+                  <p className="text-center py-8 text-gray-600 dark:text-gray-400">No articles found</p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Admin Management Tab (Master only) */}
         {activeTab === 'admin-management' && admin?.role === 'master' && (
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
@@ -1013,6 +1262,94 @@ const AdminDashboard = () => {
                     className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
                   >
                     Add Food
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Article Modal */}
+        {showEditArticleModal && selectedArticle && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowEditArticleModal(false)}>
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Edit Article</h3>
+                <button onClick={() => setShowEditArticleModal(false)} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <form onSubmit={handleSaveArticleEdit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Topic *</label>
+                  <input
+                    type="text"
+                    required
+                    value={editArticleData.topic}
+                    onChange={(e) => setEditArticleData({ ...editArticleData, topic: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Body *</label>
+                  <textarea
+                    required
+                    rows={10}
+                    value={editArticleData.body}
+                    onChange={(e) => setEditArticleData({ ...editArticleData, body: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Summary (Optional)</label>
+                  <textarea
+                    rows={3}
+                    value={editArticleData.summary}
+                    onChange={(e) => setEditArticleData({ ...editArticleData, summary: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100"
+                  />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Photo (Optional)</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => setEditArticleData({ ...editArticleData, photo: e.target.files[0] })}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100"
+                    />
+                    {editArticleData.photo && (
+                      <p className="text-xs text-gray-500 mt-1">New file: {editArticleData.photo.name}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Video (Optional)</label>
+                    <input
+                      type="file"
+                      accept="video/*"
+                      onChange={(e) => setEditArticleData({ ...editArticleData, video: e.target.files[0] })}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100"
+                    />
+                    {editArticleData.video && (
+                      <p className="text-xs text-gray-500 mt-1">New file: {editArticleData.video.name}</p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex justify-end space-x-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowEditArticleModal(false)}
+                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                  >
+                    Save Changes
                   </button>
                 </div>
               </form>

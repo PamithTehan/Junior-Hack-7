@@ -3,6 +3,7 @@ import authReducer from './slices/authSlice';
 import adminReducer from './slices/adminSlice';
 import ingredientReducer from './slices/ingredientSlice';
 import recipeReducer from './slices/recipeSlice';
+import articleReducer from './slices/articleSlice';
 import userReducer from './slices/userSlice';
 import mealReducer from './slices/mealSlice';
 
@@ -13,6 +14,7 @@ export const store = configureStore({
     ingredient: ingredientReducer,
     food: ingredientReducer, // Alias for backward compatibility
     recipe: recipeReducer,
+    article: articleReducer,
     user: userReducer,
     meal: mealReducer,
   },

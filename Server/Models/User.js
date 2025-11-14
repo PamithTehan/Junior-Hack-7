@@ -30,10 +30,11 @@ const userSchema = new mongoose.Schema({
   email: {
     type: String,
     required: [true, 'Please provide an email'],
-    unique: true,
+    unique: [true, 'An account with this email already exists'],
     lowercase: true,
     trim: true,
     match: [/^\S+@\S+\.\S+$/, 'Please provide a valid email'],
+    index: true, // Ensure index is created
   },
   password: {
     type: String,
@@ -91,8 +92,9 @@ const userSchema = new mongoose.Schema({
   },
   userId: {
     type: String,
-    unique: true,
+    unique: [true, 'User ID must be unique'],
     sparse: true,
+    index: true,
   },
   dietaryPreferences: [{
     type: String,
@@ -102,6 +104,10 @@ const userSchema = new mongoose.Schema({
   timestamps: true,
 });
 
+// Ensure unique indexes are created (MongoDB best practice)
+userSchema.index({ email: 1 }, { unique: true });
+userSchema.index({ userId: 1 }, { unique: true, sparse: true });
+
 // Virtual for full name
 userSchema.virtual('fullName').get(function() {
   return `${this.firstName} ${this.lastName}`;
@@ -109,23 +115,19 @@ userSchema.virtual('fullName').get(function() {
 
 // Generate user ID before saving (only for new users)
 userSchema.pre('save', async function(next) {
-  // Skip if document is not new or already has userId
-  if (!this.isNew || this.userId) {
-    // Set name field
-    if (this.firstName && this.lastName) {
-      this.name = `${this.firstName} ${this.lastName}`;
-    }
-    return next();
-  }
-
   try {
-    // Set name field first
+    // Always set name field
     if (this.firstName && this.lastName) {
       this.name = `${this.firstName} ${this.lastName}`;
     }
     
+    // Skip userId generation if document is not new or already has userId
+    if (!this.isNew || this.userId) {
+      return next();
+    }
+    
     // Generate user ID only for new users without userId and role is 'user'
-    if (!this.userId && this.role === 'user') {
+    if (this.role === 'user' || !this.role) {
       try {
         // Use this.constructor to get the model (safe for pre-save hooks)
         const UserModel = this.constructor;
@@ -170,46 +172,68 @@ userSchema.pre('save', async function(next) {
   }
 });
 
-// Calculate age from dateOfBirth and BMI before saving
+// Calculate age from dateOfBirth and BMI before saving (runs after other pre-save hooks)
 userSchema.pre('save', function(next) {
   try {
-    // Initialize healthProfile if it doesn't exist
-    if (!this.healthProfile) {
+    // Ensure healthProfile exists as an object
+    if (!this.healthProfile || typeof this.healthProfile !== 'object') {
       this.healthProfile = {};
     }
     
     // Calculate age from dateOfBirth
     if (this.dateOfBirth) {
-      const today = new Date();
-      const birthDate = new Date(this.dateOfBirth);
-      let age = today.getFullYear() - birthDate.getFullYear();
-      const monthDiff = today.getMonth() - birthDate.getMonth();
-      
-      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-        age--;
+      try {
+        const today = new Date();
+        const birthDate = new Date(this.dateOfBirth);
+        
+        // Validate date
+        if (isNaN(birthDate.getTime())) {
+          console.warn('Invalid dateOfBirth provided:', this.dateOfBirth);
+        } else {
+          let age = today.getFullYear() - birthDate.getFullYear();
+          const monthDiff = today.getMonth() - birthDate.getMonth();
+          
+          if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+          }
+          
+          // Ensure age is positive
+          if (age > 0 && age < 150) {
+            this.age = age;
+            this.healthProfile.age = age;
+          }
+        }
+      } catch (dateError) {
+        console.error('Error calculating age:', dateError);
+        // Continue even if age calculation fails
       }
-      
-      this.age = age;
-      
-      // Update healthProfile age
-      this.healthProfile.age = age;
     }
     
     // Calculate BMI from weight and height
-    const weight = this.healthProfile.weight;
-    const height = this.healthProfile.height;
+    const weight = this.healthProfile?.weight;
+    const height = this.healthProfile?.height;
     
-    if (weight && height && weight > 0 && height > 0) {
-      const heightInMeters = height / 100;
-      this.healthProfile.bmi = parseFloat(
-        (weight / (heightInMeters * heightInMeters)).toFixed(2)
-      );
+    if (weight && height && !isNaN(weight) && !isNaN(height) && weight > 0 && height > 0) {
+      try {
+        const heightInMeters = height / 100;
+        if (heightInMeters > 0) {
+          const bmi = weight / (heightInMeters * heightInMeters);
+          if (bmi > 0 && bmi < 100) {
+            this.healthProfile.bmi = parseFloat(bmi.toFixed(2));
+          }
+        }
+      } catch (bmiError) {
+        console.error('Error calculating BMI:', bmiError);
+        // Continue even if BMI calculation fails
+      }
     }
     
     next();
   } catch (error) {
     console.error('Error in age/BMI calculation pre-save hook:', error);
-    next(error);
+    console.error('Error stack:', error.stack);
+    // Don't block save if age/BMI calculation fails
+    next();
   }
 });
 

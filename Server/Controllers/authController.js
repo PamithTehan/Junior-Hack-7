@@ -13,45 +13,151 @@ const generateToken = (id) => {
 // @access  Public
 exports.register = async (req, res) => {
   try {
-    // Log incoming request for debugging
-    console.log('Registration request received');
-    console.log('Request body keys:', Object.keys(req.body));
-    console.log('Files:', req.files ? req.files.length : 0);
+    // Extract and normalize input data (handle both JSON and FormData)
+    // FormData fields come as strings, JSON fields come as typed values
+    const {
+      firstName = '',
+      lastName = '',
+      email = '',
+      password = '',
+      dateOfBirth = '',
+      height = null,
+      weight = null,
+      gender = '',
+      diabetes = '',
+      cholesterol = '',
+      otherMedicalStatus = '',
+      dietaryPreferences = null,
+    } = req.body;
+
+    // Normalize string fields
+    const normalizedData = {
+      firstName: String(firstName).trim(),
+      lastName: String(lastName).trim(),
+      email: String(email).trim().toLowerCase(),
+      password: String(password),
+      dateOfBirth: String(dateOfBirth).trim(),
+      height: height ? parseFloat(String(height)) : null,
+      weight: weight ? parseFloat(String(weight)) : null,
+      gender: String(gender).trim().toLowerCase(),
+      diabetes: String(diabetes).toLowerCase() === 'yes',
+      cholesterol: String(cholesterol).toLowerCase() === 'yes',
+      otherMedicalStatus: String(otherMedicalStatus || '').trim(),
+    };
+
+    // Validate required fields
+    const requiredFields = [
+      { field: 'firstName', value: normalizedData.firstName, label: 'First Name' },
+      { field: 'lastName', value: normalizedData.lastName, label: 'Last Name' },
+      { field: 'email', value: normalizedData.email, label: 'Email' },
+      { field: 'password', value: normalizedData.password, label: 'Password' },
+      { field: 'dateOfBirth', value: normalizedData.dateOfBirth, label: 'Date of Birth' },
+      { field: 'height', value: normalizedData.height, label: 'Height' },
+      { field: 'weight', value: normalizedData.weight, label: 'Weight' },
+      { field: 'gender', value: normalizedData.gender, label: 'Gender' },
+    ];
+
+    const missingFields = requiredFields
+      .filter(({ value }) => !value || value === '')
+      .map(({ label }) => label);
+
+    if (missingFields.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Missing required fields: ${missingFields.join(', ')}`,
+      });
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(normalizedData.email)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a valid email address',
+      });
+    }
+
+    // Validate password length
+    if (normalizedData.password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 6 characters long',
+      });
+    }
+
+    // Validate gender
+    const validGenders = ['male', 'female', 'other'];
+    if (!validGenders.includes(normalizedData.gender)) {
+      return res.status(400).json({
+        success: false,
+        message: `Gender must be one of: ${validGenders.join(', ')}`,
+      });
+    }
+
+    // Validate height
+    if (isNaN(normalizedData.height) || normalizedData.height < 50 || normalizedData.height > 300) {
+      return res.status(400).json({
+        success: false,
+        message: 'Height must be a number between 50 and 300 cm',
+      });
+    }
+
+    // Validate weight
+    if (isNaN(normalizedData.weight) || normalizedData.weight < 1 || normalizedData.weight > 500) {
+      return res.status(400).json({
+        success: false,
+        message: 'Weight must be a number between 1 and 500 kg',
+      });
+    }
+
+    // Validate date of birth
+    const dateOfBirthObj = new Date(normalizedData.dateOfBirth);
+    if (isNaN(dateOfBirthObj.getTime())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a valid date of birth',
+      });
+    }
+
+    // Check if date is in the future
+    if (dateOfBirthObj > new Date()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Date of birth cannot be in the future',
+      });
+    }
+
+    // Check if user already exists (email is already normalized to lowercase)
+    const existingUser = await User.findOne({ email: normalizedData.email });
     
-    // Parse FormData fields (all come as strings when using FormData)
-    const firstName = req.body.firstName;
-    const lastName = req.body.lastName;
-    const email = req.body.email;
-    const password = req.body.password;
-    const dateOfBirth = req.body.dateOfBirth;
-    const height = req.body.height ? parseFloat(req.body.height) : null;
-    const weight = req.body.weight ? parseFloat(req.body.weight) : null;
-    const gender = req.body.gender;
-    // Parse diabetes and cholesterol (FormData sends booleans as strings 'true'/'false')
-    // Also handle 'yes' string from dropdown
-    const diabetes = req.body.diabetes === 'yes' || req.body.diabetes === 'true' || req.body.diabetes === true || req.body.diabetes === 'Yes';
-    const cholesterol = req.body.cholesterol === 'yes' || req.body.cholesterol === 'true' || req.body.cholesterol === true || req.body.cholesterol === 'Yes';
-    const otherMedicalStatus = req.body.otherMedicalStatus || '';
-    const dietaryPreferences = req.body.dietaryPreferences;
-
-    // Validation - mandatory fields
-    if (!firstName || !lastName || !email || !password || !dateOfBirth || !height || !weight || !gender) {
+    if (existingUser) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide all required fields: firstName, lastName, email, password, dateOfBirth, height, weight, and gender',
+        message: 'This email address is already registered.',
+        error: {
+          field: 'email',
+          value: normalizedData.email,
+          code: 'EMAIL_ALREADY_EXISTS',
+          suggestion: 'Please use a different email address or try logging in if this is your account.',
+        },
       });
     }
 
-    // Check if user exists
-    const userExists = await User.findOne({ email });
-    if (userExists) {
-      return res.status(400).json({
-        success: false,
-        message: 'User already exists with this email',
-      });
+    // Process dietary preferences
+    let processedDietaryPrefs = [];
+    if (dietaryPreferences) {
+      try {
+        if (typeof dietaryPreferences === 'string') {
+          processedDietaryPrefs = JSON.parse(dietaryPreferences);
+        } else if (Array.isArray(dietaryPreferences)) {
+          processedDietaryPrefs = dietaryPreferences.filter(p => p);
+        }
+      } catch (e) {
+        processedDietaryPrefs = [];
+      }
     }
 
-    // Handle file uploads (medical reports)
+    // Process medical reports (file uploads)
     const medicalReports = [];
     if (req.files && req.files.length > 0) {
       const { uploadToCloudinary } = require('../Config/cloudinary');
@@ -59,119 +165,52 @@ exports.register = async (req, res) => {
       for (const file of req.files) {
         try {
           const isPdf = file.mimetype === 'application/pdf';
-          const result = await uploadToCloudinary(
+          const uploadResult = await uploadToCloudinary(
             file.buffer,
             'sri-lankan-nutrition/medical-reports',
             { resourceType: isPdf ? 'raw' : 'image' }
           );
           
           medicalReports.push({
-            url: result.secure_url,
-            cloudinaryId: result.public_id,
+            url: uploadResult.secure_url,
+            cloudinaryId: uploadResult.public_id,
             fileName: file.originalname,
             fileType: isPdf ? 'pdf' : 'image',
+            uploadedAt: new Date(),
           });
         } catch (uploadError) {
-          console.error('Error uploading medical report:', uploadError);
-          // Continue with other files even if one fails
+          console.error(`Error uploading file ${file.originalname}:`, uploadError.message);
+          // Continue with registration even if file upload fails
         }
       }
     }
 
-    // Handle dietary preferences
-    let dietaryPrefs = [];
-    if (dietaryPreferences) {
-      try {
-        // Try parsing as JSON string first
-        if (typeof dietaryPreferences === 'string') {
-          dietaryPrefs = JSON.parse(dietaryPreferences);
-        } else if (Array.isArray(dietaryPreferences)) {
-          dietaryPrefs = dietaryPreferences.filter(p => p);
-        } else if (typeof dietaryPreferences === 'object') {
-          dietaryPrefs = Object.values(dietaryPreferences).filter(p => p);
-        }
-      } catch (e) {
-        // If parsing fails, treat as single value
-        dietaryPrefs = [dietaryPreferences];
-      }
-    }
+    // Create user
+    const userData = {
+      firstName: normalizedData.firstName,
+      lastName: normalizedData.lastName,
+      email: normalizedData.email, // Already normalized to lowercase
+      password: normalizedData.password,
+      dateOfBirth: dateOfBirthObj,
+      gender: normalizedData.gender,
+      diabetes: normalizedData.diabetes,
+      cholesterol: normalizedData.cholesterol,
+      otherMedicalStatus: normalizedData.otherMedicalStatus,
+      dietaryPreferences: processedDietaryPrefs,
+      medicalReports,
+      healthProfile: {
+        height: normalizedData.height,
+        weight: normalizedData.weight,
+        // Age and BMI will be calculated automatically in the pre-save hook
+      },
+    };
 
-    // Validate required fields again after parsing
-    if (!firstName || !lastName || !email || !password || !dateOfBirth || !height || !weight || !gender) {
-      return res.status(400).json({
-        success: false,
-        message: 'Please provide all required fields: firstName, lastName, email, password, dateOfBirth, height, weight, and gender',
-        debug: {
-          firstName: !!firstName,
-          lastName: !!lastName,
-          email: !!email,
-          password: !!password,
-          dateOfBirth: !!dateOfBirth,
-          height,
-          weight,
-          gender: !!gender,
-        },
-      });
-    }
+    const user = await User.create(userData);
 
-    // Validate height and weight are valid numbers
-    if (isNaN(height) || height <= 0 || height > 300) {
-      return res.status(400).json({
-        success: false,
-        message: 'Height must be a valid number between 1 and 300 cm',
-      });
-    }
-
-    if (isNaN(weight) || weight <= 0 || weight > 1000) {
-      return res.status(400).json({
-        success: false,
-        message: 'Weight must be a valid number between 1 and 1000 kg',
-      });
-    }
-
-    // Validate date of birth
-    const dateOfBirthObj = new Date(dateOfBirth);
-    if (isNaN(dateOfBirthObj.getTime())) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid date of birth',
-      });
-    }
-
-    // Create user with health profile (height, weight will calculate BMI automatically)
-    let user;
-    try {
-      user = await User.create({
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        email: email.trim().toLowerCase(),
-        password,
-        dateOfBirth: dateOfBirthObj,
-        gender,
-        diabetes,
-        cholesterol,
-        otherMedicalStatus: otherMedicalStatus ? otherMedicalStatus.trim() : '',
-        dietaryPreferences: dietaryPrefs,
-        medicalReports,
-        healthProfile: {
-          height,
-          weight,
-          // Age and BMI will be calculated in the pre-save hook
-        },
-      });
-    } catch (createError) {
-      console.error('Error creating user:', createError);
-      console.error('User creation error details:', {
-        name: createError.name,
-        message: createError.message,
-        errors: createError.errors,
-      });
-      throw createError; // Re-throw to be caught by outer try-catch
-    }
-
+    // Return success response
     res.status(201).json({
       success: true,
-      message: 'Registration successful! Please login to continue.',
+      message: 'Account created successfully. Please login to continue.',
       user: {
         id: user._id,
         firstName: user.firstName,
@@ -179,14 +218,60 @@ exports.register = async (req, res) => {
         email: user.email,
       },
     });
+
   } catch (error) {
+    // Handle MongoDB validation errors
+    if (error.name === 'ValidationError') {
+      const validationErrors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: validationErrors,
+      });
+    }
+
+    // Handle duplicate key errors (specific field error messages)
+    if (error.code === 11000) {
+      const duplicateField = error.keyPattern ? Object.keys(error.keyPattern)[0] : 'field';
+      const duplicateValue = error.keyValue ? error.keyValue[duplicateField] : 'value';
+      
+      // Specific error messages for different duplicate fields
+      const errorMessages = {
+        email: {
+          message: 'This email address is already registered.',
+          suggestion: 'Please use a different email address or try logging in if this is your account.',
+        },
+        userId: {
+          message: 'A user with this ID already exists.',
+          suggestion: 'Please try again. The system will generate a new user ID.',
+        },
+      };
+
+      const fieldError = errorMessages[duplicateField] || {
+        message: `A record with this ${duplicateField} already exists.`,
+        suggestion: `Please use a different ${duplicateField}.`,
+      };
+
+      console.error(`Duplicate ${duplicateField} error:`, duplicateValue);
+      
+      return res.status(400).json({
+        success: false,
+        message: fieldError.message,
+        error: {
+          field: duplicateField,
+          value: duplicateValue,
+          code: 'DUPLICATE_ENTRY',
+          suggestion: fieldError.suggestion,
+        },
+      });
+    }
+
+    // Handle other errors
     console.error('Registration error:', error);
-    console.error('Error stack:', error.stack);
     res.status(500).json({
       success: false,
-      message: 'Error registering user',
-      error: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+      message: 'An error occurred during registration. Please try again later.',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
     });
   }
 };

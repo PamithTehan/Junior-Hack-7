@@ -3,6 +3,11 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useForm } from 'react-hook-form';
 import { getMe } from '../store/slices/authSlice';
 import { updateProfile } from '../store/slices/userSlice';
+import {
+  ACTIVITY_LEVEL_OPTIONS,
+  HEALTH_GOAL_OPTIONS,
+  MEDICAL_CONDITION_OPTIONS,
+} from '../constants/formOptions';
 
 const Profile = () => {
   const dispatch = useDispatch();
@@ -56,30 +61,14 @@ const Profile = () => {
     }
   };
 
+  // Use constants from formOptions for consistency
   const healthConditionsOptions = [
-    'diabetes',
-    'obesity',
-    'heart_disease',
-    'hypertension',
+    ...MEDICAL_CONDITION_OPTIONS.map(opt => opt.value),
     'none',
   ];
 
-  const goalsOptions = [
-    'lose_weight',
-    'gain_weight',
-    'maintain_weight',
-    'manage_diabetes',
-    'heart_health',
-    'general_health',
-  ];
-
-  const activityLevels = [
-    { value: 'sedentary', label: 'Sedentary (little or no exercise)' },
-    { value: 'light', label: 'Light (exercise 1-3 days/week)' },
-    { value: 'moderate', label: 'Moderate (exercise 3-5 days/week)' },
-    { value: 'active', label: 'Active (exercise 6-7 days/week)' },
-    { value: 'very_active', label: 'Very Active (intense exercise daily)' },
-  ];
+  const goalsOptions = HEALTH_GOAL_OPTIONS.map(opt => opt.value);
+  const activityLevels = ACTIVITY_LEVEL_OPTIONS;
 
   return (
     <div className="container mx-auto px-4 py-8">

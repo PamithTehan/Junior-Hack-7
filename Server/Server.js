@@ -92,9 +92,11 @@ app.use('/api/auth', require('./Routes/authRoutes'));
 app.use('/api/admin', require('./Routes/adminRoutes'));
 app.use('/api/ingredients', require('./Routes/ingredientRoutes'));
 app.use('/api/recipes', require('./Routes/recipeRoutes'));
+app.use('/api/articles', require('./Routes/articleRoutes'));
 app.use('/api/mealplans', require('./Routes/mealPlanRoutes'));
 app.use('/api/tracking', require('./Routes/trackingRoutes'));
 app.use('/api/upload', require('./Routes/uploadRoutes'));
+app.use('/api/dietitians', require('./Routes/dietitianRoutes'));
 
 // Health check
 app.get('/api/health', (req, res) => {

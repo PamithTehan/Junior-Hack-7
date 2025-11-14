@@ -42,9 +42,9 @@ export const register = createAsyncThunk(
       
       return response.data;
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || 'Registration failed'
-      );
+      console.error('Registration error:', error.response?.data || error.message);
+      const errorMessage = error.response?.data?.message || error.response?.data?.error || 'Registration failed';
+      return rejectWithValue(errorMessage);
     }
   }
 );
@@ -84,12 +84,29 @@ export const logout = createAsyncThunk('auth/logout', async () => {
   return null;
 });
 
+// Check email availability
+export const checkEmailAvailability = createAsyncThunk(
+  'auth/checkEmailAvailability',
+  async (email, { rejectWithValue }) => {
+    try {
+      const normalizedEmail = encodeURIComponent(email.trim().toLowerCase());
+      const response = await axios.get(`${API_URL}/auth/check-email/${normalizedEmail}`);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || 'Error checking email availability'
+      );
+    }
+  }
+);
+
 const initialState = {
   user: null,
   token: token || null,
   isAuthenticated: !!token,
   loading: false,
   error: null,
+  emailAvailability: null, // 'checking', 'available', 'taken', null
 };
 
 const authSlice = createSlice({
@@ -153,6 +170,16 @@ const authSlice = createSlice({
         state.user = null;
         state.token = null;
         state.isAuthenticated = false;
+      })
+      // Check Email Availability
+      .addCase(checkEmailAvailability.pending, (state) => {
+        state.emailAvailability = 'checking';
+      })
+      .addCase(checkEmailAvailability.fulfilled, (state, action) => {
+        state.emailAvailability = action.payload.available ? 'available' : 'taken';
+      })
+      .addCase(checkEmailAvailability.rejected, (state) => {
+        state.emailAvailability = null;
       });
   },
 });
