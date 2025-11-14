@@ -2,7 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { getMe } from './store/slices/authSlice';
-import ProtectedRoute from './utils/ProtectedRoute';
+import ProtectedRoute from './Utils/ProtectedRoute';
 import { ThemeProvider } from './Contexts/ThemeContext';
 import { LanguageProvider } from './Contexts/LanguageContext';
 
