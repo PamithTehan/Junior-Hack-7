@@ -29,6 +29,7 @@ import AdminDashboard from './Pages/Admin/AdminDashboard';
 import Navbar from './Components/Common/Navbar';
 import Footer from './Components/Common/Footer';
 import ProtectedAdminRoute from './Utils/ProtectedAdminRoute';
+import RouteTranslationHandler from './Components/Common/RouteTranslationHandler';
 
 function App() {
   const dispatch = useDispatch();
@@ -50,6 +51,7 @@ function App() {
             v7_relativeSplatPath: true,
           }}
         >
+          <RouteTranslationHandler />
           <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
             <Navbar />
             <main className="flex-grow">

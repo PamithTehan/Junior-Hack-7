@@ -55,7 +55,14 @@ export const SocketProvider = ({ children }) => {
       };
 
       const handleConnectError = (error) => {
-        console.error('Socket connection error in context:', error);
+        // Suppress connection refused errors (server not running) to avoid console spam
+        const isConnectionRefused = error.message?.includes('xhr poll error') || 
+                                     error.message?.includes('ERR_CONNECTION_REFUSED') ||
+                                     error.type === 'TransportError';
+        
+        if (!isConnectionRefused && import.meta.env.DEV) {
+          console.error('Socket connection error in context:', error);
+        }
         setIsConnected(false);
       };
 

@@ -97,3 +97,5 @@ export const { setSearchTerm, setCategory, setCurrentPage, clearSelectedIngredie
   ingredientSlice.actions;
 export default ingredientSlice.reducer;
 
+
+

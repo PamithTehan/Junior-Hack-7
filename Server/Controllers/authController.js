@@ -348,12 +348,17 @@ exports.login = async (req, res) => {
       sameSite: 'strict',
     });
 
+    // Ensure name is computed from firstName and lastName if missing
+    const userName = user.name || (user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.firstName || user.lastName || 'User');
+
     res.status(200).json({
       success: true,
       token,
       user: {
         id: user._id,
-        name: user.name,
+        name: userName,
+        firstName: user.firstName,
+        lastName: user.lastName,
         email: user.email,
         healthProfile: user.healthProfile,
         avatar: user.avatar,
@@ -374,6 +379,21 @@ exports.login = async (req, res) => {
 exports.getMe = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
+    
+    // Ensure name is computed from firstName and lastName if missing
+    if (!user.name && user.firstName && user.lastName) {
+      user.name = `${user.firstName} ${user.lastName}`;
+      // Optionally save it to the database for future queries
+      try {
+        await user.save();
+      } catch (saveError) {
+        // If save fails, just use the computed value without saving
+        console.log('Could not save computed name field:', saveError.message);
+      }
+    } else if (!user.name) {
+      user.name = user.firstName || user.lastName || 'User';
+    }
+    
     res.status(200).json({
       success: true,
       user,
@@ -407,6 +427,18 @@ exports.updateProfile = async (req, res) => {
       fieldsToUpdate,
       { new: true, runValidators: true }
     );
+
+    // Ensure name is computed from firstName and lastName if missing
+    if (!user.name && user.firstName && user.lastName) {
+      user.name = `${user.firstName} ${user.lastName}`;
+      try {
+        await user.save();
+      } catch (saveError) {
+        console.log('Could not save computed name field:', saveError.message);
+      }
+    } else if (!user.name) {
+      user.name = user.firstName || user.lastName || 'User';
+    }
 
     // Age is recalculated in pre-save hook, but we need it for calorie calculation
     // Ensure age is up-to-date before calculating calories
@@ -463,6 +495,179 @@ exports.updateProfile = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error updating profile',
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Update user email
+// @route   PUT /api/auth/update-email
+// @access  Private
+exports.updateEmail = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide email and password',
+      });
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim().toLowerCase())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a valid email address',
+      });
+    }
+
+    const user = await User.findById(req.user.id).select('+password');
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    // Verify password
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid password',
+      });
+    }
+
+    // Check if email is already taken
+    const existingUser = await User.findOne({ email: email.trim().toLowerCase() });
+    if (existingUser && existingUser._id.toString() !== req.user.id) {
+      return res.status(400).json({
+        success: false,
+        message: 'This email address is already registered',
+      });
+    }
+
+    // Update email
+    user.email = email.trim().toLowerCase();
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Email updated successfully',
+      user: {
+        id: user._id,
+        email: user.email,
+        name: user.name || `${user.firstName} ${user.lastName}`,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error updating email',
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Update user password
+// @route   PUT /api/auth/update-password
+// @access  Private
+exports.updatePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide current password and new password',
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 6 characters long',
+      });
+    }
+
+    const user = await User.findById(req.user.id).select('+password');
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    // Verify current password
+    const isMatch = await user.comparePassword(currentPassword);
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        message: 'Current password is incorrect',
+      });
+    }
+
+    // Update password
+    user.password = newPassword;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Password updated successfully',
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error updating password',
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Update user name
+// @route   PUT /api/auth/update-name
+// @access  Private
+exports.updateName = async (req, res) => {
+  try {
+    const { firstName, lastName } = req.body;
+
+    if (!firstName || !lastName) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide both first name and last name',
+      });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    // Update name
+    user.firstName = firstName.trim();
+    user.lastName = lastName.trim();
+    user.name = `${firstName.trim()} ${lastName.trim()}`;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Name updated successfully',
+      user: {
+        id: user._id,
+        name: user.name,
+        firstName: user.firstName,
+        lastName: user.lastName,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error updating name',
       error: error.message,
     });
   }

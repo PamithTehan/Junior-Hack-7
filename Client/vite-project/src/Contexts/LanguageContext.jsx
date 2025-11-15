@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
+import { useGoogleTranslate } from '../Hooks/useGoogleTranslate';
 
 const LanguageContext = createContext();
 
@@ -16,6 +17,9 @@ export const LanguageProvider = ({ children }) => {
     const savedLanguage = localStorage.getItem('language');
     return savedLanguage || 'en';
   });
+
+  // Integrate Google Translate
+  useGoogleTranslate(language);
 
   useEffect(() => {
     // Save to localStorage

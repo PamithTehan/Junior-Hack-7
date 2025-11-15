@@ -5,6 +5,9 @@ const {
   login,
   getMe,
   updateProfile,
+  updateEmail,
+  updatePassword,
+  updateName,
   logout,
 } = require('../Controllers/authController');
 const { protect } = require('../Middlewares/auth');
@@ -15,6 +18,9 @@ router.post('/register', upload.array('medicalReports', 10), register);
 router.post('/login', login);
 router.get('/me', protect, getMe);
 router.put('/profile', protect, updateProfile);
+router.put('/update-email', protect, updateEmail);
+router.put('/update-password', protect, updatePassword);
+router.put('/update-name', protect, updateName);
 router.post('/logout', protect, logout);
 
 // @desc    Check email availability

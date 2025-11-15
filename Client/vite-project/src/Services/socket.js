@@ -29,12 +29,14 @@ export const initializeSocket = (token) => {
     },
     transports: ['polling', 'websocket'], // Try polling first, then websocket
     reconnection: true,
-    reconnectionDelay: 1000,
-    reconnectionAttempts: 5,
+    reconnectionDelay: 2000, // Wait 2 seconds before retrying
+    reconnectionAttempts: 3, // Limit reconnection attempts to avoid spam
     reconnectionDelayMax: 5000,
-    timeout: 20000,
+    timeout: 10000, // Reduce timeout to fail faster
     autoConnect: true,
     forceNew: false,
+    // Suppress connection errors when server is not available
+    extraHeaders: {},
   });
 
   socket.on('connect', () => {
@@ -46,8 +48,16 @@ export const initializeSocket = (token) => {
   });
 
   socket.on('connect_error', (error) => {
-    console.error('Socket.IO connection error:', error.message);
-    // Don't disconnect on error, let it retry
+    // Suppress connection refused errors (server not running) to avoid console spam
+    // Only log other types of connection errors
+    const isConnectionRefused = error.message?.includes('xhr poll error') || 
+                                 error.message?.includes('ERR_CONNECTION_REFUSED') ||
+                                 error.type === 'TransportError';
+    
+    if (!isConnectionRefused && import.meta.env.DEV) {
+      console.error('Socket.IO connection error:', error.message);
+    }
+    // Don't disconnect on error, let it retry silently
   });
 
   return socket;

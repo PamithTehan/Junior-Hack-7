@@ -36,3 +36,80 @@
   --color-accent-800: #6b3b21;
   --color-accent-900: #5a311c;
 }
+
+/* Google Translate Styles - Hide banner and improve integration */
+.goog-te-banner-frame {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  width: 0 !important;
+  position: absolute !important;
+  top: -9999px !important;
+}
+
+body {
+  top: 0 !important;
+  position: relative !important;
+}
+
+/* Prevent Google Translate from adding top margin */
+body.top {
+  top: 0 !important;
+}
+
+.goog-te-menu-frame {
+  max-width: 100% !important;
+}
+
+/* Hide Google Translate branding and dropdown */
+.goog-te-gadget {
+  font-size: 0 !important;
+  display: none !important;
+}
+
+.goog-te-gadget .goog-te-combo {
+  margin: 0 !important;
+  display: none !important;
+}
+
+/* Ensure translated content maintains styling */
+.translated-ltr,
+.translated-rtl {
+  direction: ltr;
+}
+
+/* Hide the Google Translate select dropdown when not needed */
+#google_translate_element {
+  display: none !important;
+  visibility: hidden !important;
+  position: absolute !important;
+  top: -9999px !important;
+  left: -9999px !important;
+}
+
+/* Hide Google Translate iframes except the main one */
+iframe[src*="translate.google"]:not([id="google_translate_element"]) {
+  display: none !important;
+}
+
+/* Ensure translated text doesn't break layout */
+.goog-trans-section {
+  display: inline;
+}
+
+/* Maintain proper spacing for translated content */
+.skiptranslate {
+  display: none !important;
+}
+
+/* Language Toggle Animation */
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
