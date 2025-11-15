@@ -13,7 +13,6 @@ import {
   FiCoffee, 
   FiSun, 
   FiMoon, 
-  FiApple,
   FiUser,
   FiBookOpen,
   FiCamera,
@@ -28,7 +27,6 @@ import {
 import { 
   MdRestaurant,
   MdLocalDining,
-  MdChefHat,
   MdHealthAndSafety
 } from 'react-icons/md';
 import { 
@@ -38,7 +36,9 @@ import {
 } from 'react-icons/gi';
 import { 
   FaFire,
-  FaDumbbell
+  FaDumbbell,
+  FaApple,
+  FaUtensils
 } from 'react-icons/fa';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -120,7 +120,7 @@ const Dashboard = () => {
     { id: 'breakfast', label: 'Breakfast', icon: FiCoffee, color: 'orange' },
     { id: 'lunch', label: 'Lunch', icon: MdLocalDining, color: 'yellow' },
     { id: 'dinner', label: 'Dinner', icon: FiMoon, color: 'purple' },
-    { id: 'snack', label: 'Snack', icon: FiApple, color: 'green' },
+    { id: 'snack', label: 'Snack', icon: FaApple, color: 'green' },
   ];
 
   const foodsByMeal = mealTypes.reduce((acc, meal) => {
@@ -157,7 +157,7 @@ const Dashboard = () => {
     {
       title: 'Recipes',
       description: 'Explore traditional recipes',
-      icon: MdChefHat,
+      icon: FaUtensils,
       link: '/recipes',
       gradient: 'from-orange-500 to-red-500',
       color: 'orange',

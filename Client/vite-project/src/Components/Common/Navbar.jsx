@@ -21,7 +21,8 @@ import {
 } from 'react-icons/fi';
 import { 
   HiOutlineSparkles,
-  HiOutlineUserGroup
+  HiOutlineUserGroup,
+  HiOutlineBookOpen
 } from 'react-icons/hi';
 import { 
   MdRestaurant,
