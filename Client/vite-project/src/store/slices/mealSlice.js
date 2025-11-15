@@ -23,13 +23,23 @@ export const fetchMealPlans = createAsyncThunk(
 
 export const generateMealPlan = createAsyncThunk(
   'meal/generateMealPlan',
-  async (date, { rejectWithValue }) => {
+  async ({ date, nutritionGoals }, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${API_URL}/mealplans/generate`, { date });
+      const token = localStorage.getItem('token');
+      const response = await axios.post(
+        `${API_URL}/mealplans/generate`,
+        { date, nutritionGoals },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
       return response.data.data;
     } catch (error) {
+      console.error('Generate meal plan error:', error.response?.data || error.message);
       return rejectWithValue(
-        error.response?.data?.message || 'Failed to generate meal plan'
+        error.response?.data?.message || error.response?.data?.error || 'Failed to generate meal plan'
       );
     }
   }
@@ -160,10 +170,12 @@ const mealSlice = createSlice({
       .addCase(generateMealPlan.fulfilled, (state, action) => {
         state.loading = false;
         state.currentMealPlan = action.payload;
+        state.error = null;
       })
       .addCase(generateMealPlan.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+        // Don't clear currentMealPlan on error - keep showing loading
       })
       // Create Meal Plan
       .addCase(createMealPlan.pending, (state) => {

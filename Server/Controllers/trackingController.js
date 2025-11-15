@@ -1,5 +1,7 @@
 const DailyIntake = require('../Models/DailyIntake');
 const Ingredient = require('../Models/Ingredient');
+const Recipe = require('../Models/Recipe');
+const User = require('../Models/User');
 
 // @desc    Get daily intake records
 // @route   GET /api/tracking
@@ -418,6 +420,430 @@ exports.removeFood = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error removing food from intake',
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Add recipe to daily intake
+// @route   POST /api/tracking/recipe
+// @access  Private
+exports.addRecipe = async (req, res) => {
+  try {
+    const { recipeId, mealType, date, servings = 1 } = req.body;
+
+    if (!recipeId || !mealType) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide recipeId and mealType',
+      });
+    }
+
+    const recipe = await Recipe.findById(recipeId);
+    if (!recipe) {
+      return res.status(404).json({
+        success: false,
+        message: 'Recipe not found',
+      });
+    }
+
+    const intakeDate = date ? new Date(date) : new Date();
+    intakeDate.setHours(0, 0, 0, 0);
+
+    let intake = await DailyIntake.findOne({
+      userId: req.user.id,
+      date: {
+        $gte: intakeDate,
+        $lt: new Date(intakeDate.getTime() + 24 * 60 * 60 * 1000),
+      },
+    });
+
+    if (!intake) {
+      intake = await DailyIntake.create({
+        userId: req.user.id,
+        date: intakeDate,
+        foods: [],
+        totalCalories: 0,
+        totalNutrition: { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 },
+      });
+    }
+
+    // Calculate nutrition per serving
+    const nutrition = {
+      calories: (recipe.nutrition.calories || 0) * servings,
+      protein: (recipe.nutrition.proteins || 0) * servings,
+      carbs: (recipe.nutrition.carbohydrates || 0) * servings,
+      fat: (recipe.nutrition.fat || 0) * servings,
+      fiber: (recipe.nutrition.fiber || 0) * servings,
+    };
+
+    // Add recipe to intake (recipeId stored in foodId field)
+    intake.foods.push({
+      foodId: recipe._id,
+      foodName: recipe.name,
+      quantity: servings,
+      mealType,
+      nutrition,
+      loggedAt: new Date(),
+    });
+
+    // Update total nutrition
+    intake.totalNutrition.calories += nutrition.calories;
+    intake.totalNutrition.protein += nutrition.protein;
+    intake.totalNutrition.carbs += nutrition.carbs;
+    intake.totalNutrition.fat += nutrition.fat;
+    if (intake.totalNutrition.fiber === undefined) {
+      intake.totalNutrition.fiber = 0;
+    }
+    intake.totalNutrition.fiber += nutrition.fiber;
+    intake.totalCalories = intake.totalNutrition.calories;
+
+    await intake.save();
+
+    const populatedIntake = await DailyIntake.findById(intake._id);
+
+    // Emit real-time update via Socket.IO
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`user:${req.user.id}`).emit('food:added', {
+        intake: populatedIntake,
+        food: populatedIntake.foods[populatedIntake.foods.length - 1],
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: populatedIntake,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error adding recipe to intake',
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Add manual nutrition entry to daily intake
+// @route   POST /api/tracking/manual
+// @access  Private
+exports.addManualEntry = async (req, res) => {
+  try {
+    const { foodName, nutrition, mealType, date } = req.body;
+
+    if (!foodName || !nutrition || !mealType) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide foodName, nutrition, and mealType',
+      });
+    }
+
+    if (!nutrition.calories) {
+      return res.status(400).json({
+        success: false,
+        message: 'Calories are required',
+      });
+    }
+
+    const intakeDate = date ? new Date(date) : new Date();
+    intakeDate.setHours(0, 0, 0, 0);
+
+    let intake = await DailyIntake.findOne({
+      userId: req.user.id,
+      date: {
+        $gte: intakeDate,
+        $lt: new Date(intakeDate.getTime() + 24 * 60 * 60 * 1000),
+      },
+    });
+
+    if (!intake) {
+      intake = await DailyIntake.create({
+        userId: req.user.id,
+        date: intakeDate,
+        foods: [],
+        totalCalories: 0,
+        totalNutrition: { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 },
+      });
+    }
+
+    // Normalize nutrition data
+    const normalizedNutrition = {
+      calories: parseFloat(nutrition.calories) || 0,
+      protein: parseFloat(nutrition.protein || nutrition.proteins || 0) || 0,
+      carbs: parseFloat(nutrition.carbs || nutrition.carbohydrates || 0) || 0,
+      fat: parseFloat(nutrition.fat || 0) || 0,
+      fiber: parseFloat(nutrition.fiber || 0) || 0,
+    };
+
+    // Add manual entry to intake
+    intake.foods.push({
+      foodId: null, // No foodId for manual entries
+      foodName: foodName.trim(),
+      quantity: 1,
+      mealType,
+      nutrition: normalizedNutrition,
+      loggedAt: new Date(),
+    });
+
+    // Update total nutrition
+    intake.totalNutrition.calories += normalizedNutrition.calories;
+    intake.totalNutrition.protein += normalizedNutrition.protein;
+    intake.totalNutrition.carbs += normalizedNutrition.carbs;
+    intake.totalNutrition.fat += normalizedNutrition.fat;
+    if (intake.totalNutrition.fiber === undefined) {
+      intake.totalNutrition.fiber = 0;
+    }
+    intake.totalNutrition.fiber += normalizedNutrition.fiber;
+    intake.totalCalories = intake.totalNutrition.calories;
+
+    await intake.save();
+
+    const populatedIntake = await DailyIntake.findById(intake._id);
+
+    // Emit real-time update via Socket.IO
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`user:${req.user.id}`).emit('food:added', {
+        intake: populatedIntake,
+        food: populatedIntake.foods[populatedIntake.foods.length - 1],
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: populatedIntake,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error adding manual entry to intake',
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Finalize meal and send email notification
+// @route   POST /api/tracking/finalize-meal
+// @access  Private
+exports.finalizeMeal = async (req, res) => {
+  try {
+    const { mealType, date } = req.body;
+
+    if (!mealType) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide mealType',
+      });
+    }
+
+    const intakeDate = date ? new Date(date) : new Date();
+    intakeDate.setHours(0, 0, 0, 0);
+
+    const intake = await DailyIntake.findOne({
+      userId: req.user.id,
+      date: {
+        $gte: intakeDate,
+        $lt: new Date(intakeDate.getTime() + 24 * 60 * 60 * 1000),
+      },
+    });
+
+    if (!intake) {
+      return res.status(404).json({
+        success: false,
+        message: 'No intake found for this date',
+      });
+    }
+
+    const user = await User.findById(req.user.id);
+    const dailyGoal = user.healthProfile?.dailyCalorieGoal || 2000;
+
+    // Calculate nutrition goals (standard ratios)
+    const proteinRatio = 0.25; // 25% of calories from protein
+    const carbsRatio = 0.45; // 45% of calories from carbs
+    const fatRatio = 0.30; // 30% of calories from fat
+    
+    const dailyGoals = {
+      calories: dailyGoal,
+      protein: Math.round((dailyGoal * proteinRatio) / 4), // 4 calories per gram
+      carbs: Math.round((dailyGoal * carbsRatio) / 4), // 4 calories per gram
+      fat: Math.round((dailyGoal * fatRatio) / 9), // 9 calories per gram
+      fiber: 25, // Recommended daily fiber
+    };
+
+    const consumed = {
+      calories: intake.totalNutrition?.calories || 0,
+      protein: intake.totalNutrition?.protein || 0,
+      carbs: intake.totalNutrition?.carbs || 0,
+      fat: intake.totalNutrition?.fat || 0,
+      fiber: intake.totalNutrition?.fiber || 0,
+    };
+
+    const remaining = {
+      calories: Math.max(0, dailyGoals.calories - consumed.calories),
+      protein: Math.max(0, dailyGoals.protein - consumed.protein),
+      carbs: Math.max(0, dailyGoals.carbs - consumed.carbs),
+      fat: Math.max(0, dailyGoals.fat - consumed.fat),
+      fiber: Math.max(0, dailyGoals.fiber - consumed.fiber),
+    };
+
+    const exceeded = {
+      calories: Math.max(0, consumed.calories - dailyGoals.calories),
+      protein: Math.max(0, consumed.protein - dailyGoals.protein),
+      carbs: Math.max(0, consumed.carbs - dailyGoals.carbs),
+      fat: Math.max(0, consumed.fat - dailyGoals.fat),
+      fiber: Math.max(0, consumed.fiber - dailyGoals.fiber),
+    };
+
+    // Send email notification
+    try {
+      const { sendMealNotificationEmail } = require('../Utils/emailService');
+      await sendMealNotificationEmail(user, {
+        mealType,
+        date: intakeDate,
+        consumed,
+        remaining,
+        exceeded,
+        dailyGoals,
+      });
+    } catch (emailError) {
+      console.error('Error sending email:', emailError);
+      // Don't fail the request if email fails
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Meal finalized successfully',
+      data: {
+        consumed,
+        remaining,
+        exceeded,
+        dailyGoals,
+        hasExceeded: consumed.calories > dailyGoals.calories,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error finalizing meal',
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Get user daily nutrition goals
+// @route   GET /api/tracking/goals
+// @access  Private
+exports.getNutritionGoals = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    
+    // First check if user has manual goals set
+    if (user.manualNutritionGoals?.useManual && user.manualNutritionGoals?.calories) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          calories: user.manualNutritionGoals.calories,
+          protein: user.manualNutritionGoals.protein || 125,
+          carbs: user.manualNutritionGoals.carbs || 225,
+          fat: user.manualNutritionGoals.fat || 67,
+          fiber: user.manualNutritionGoals.fiber || 25,
+        },
+        source: 'manual',
+      });
+    }
+
+    // Otherwise calculate from user profile
+    const dailyGoal = user.healthProfile?.dailyCalorieGoal || 2000;
+
+    // Calculate nutrition goals (standard ratios)
+    const proteinRatio = 0.25; // 25% of calories from protein
+    const carbsRatio = 0.45; // 45% of calories from carbs
+    const fatRatio = 0.30; // 30% of calories from fat
+    
+    const goals = {
+      calories: dailyGoal,
+      protein: Math.round((dailyGoal * proteinRatio) / 4), // 4 calories per gram
+      carbs: Math.round((dailyGoal * carbsRatio) / 4), // 4 calories per gram
+      fat: Math.round((dailyGoal * fatRatio) / 9), // 9 calories per gram
+      fiber: 25, // Recommended daily fiber (g)
+    };
+
+    res.status(200).json({
+      success: true,
+      data: goals,
+      source: 'profile',
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching nutrition goals',
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Save/Update user manual nutrition goals
+// @route   POST /api/tracking/goals
+// @access  Private
+exports.saveNutritionGoals = async (req, res) => {
+  try {
+    const { calories, protein, carbs, fat, fiber } = req.body;
+
+    if (!calories || calories < 1000 || calories > 5000) {
+      return res.status(400).json({
+        success: false,
+        message: 'Calories must be between 1000 and 5000',
+      });
+    }
+
+    const user = await User.findById(req.user.id);
+    
+    user.manualNutritionGoals = {
+      calories: parseFloat(calories) || 2000,
+      protein: parseFloat(protein) || 125,
+      carbs: parseFloat(carbs) || 225,
+      fat: parseFloat(fat) || 67,
+      fiber: parseFloat(fiber) || 25,
+      useManual: true,
+    };
+
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Nutrition goals saved successfully',
+      data: user.manualNutritionGoals,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error saving nutrition goals',
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Clear user manual nutrition goals (use profile goals instead)
+// @route   DELETE /api/tracking/goals
+// @access  Private
+exports.clearNutritionGoals = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    
+    user.manualNutritionGoals = {
+      useManual: false,
+    };
+
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Manual nutrition goals cleared. Using profile goals now.',
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error clearing nutrition goals',
       error: error.message,
     });
   }

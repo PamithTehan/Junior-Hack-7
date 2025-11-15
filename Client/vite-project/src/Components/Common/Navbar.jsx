@@ -47,7 +47,7 @@ const Navbar = () => {
                   <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary-600 dark:bg-primary-400 group-hover:w-full transition-all duration-300"></span>
                 </Link>
                 <Link
-                  to="/meal-planner"
+                  to="/meal-plan"
                   className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 font-medium transition-colors relative group"
                   onClick={() => setMobileMenuOpen(false)}
                 >
@@ -55,11 +55,11 @@ const Navbar = () => {
                   <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary-600 dark:bg-primary-400 group-hover:w-full transition-all duration-300"></span>
                 </Link>
                 <Link
-                  to="/tracker"
+                  to="/daily-tracker"
                   className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 font-medium transition-colors relative group"
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  {t('nav.tracker')}
+                  {t('nav.dailyTracker')}
                   <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary-600 dark:bg-primary-400 group-hover:w-full transition-all duration-300"></span>
                 </Link>
                 <Link
@@ -97,12 +97,15 @@ const Navbar = () => {
                 <div className="flex items-center space-x-3">
                   <LanguageToggle />
                   <ThemeToggle />
-                  <div className="hidden lg:flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 px-4 py-2 rounded-full">
+                  <Link
+                    to="/profile"
+                    className="hidden lg:flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 px-4 py-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                  >
                     <div className="w-8 h-8 bg-gradient-to-br from-primary-400 to-primary-600 rounded-full flex items-center justify-center text-white font-semibold">
                       {user?.name?.charAt(0).toUpperCase() || 'U'}
                     </div>
                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Hi, {user?.name?.split(' ')[0]}</span>
-                  </div>
+                  </Link>
                   {/* Admin Menu Button */}
                   <div className="relative">
                     <button
@@ -116,6 +119,13 @@ const Navbar = () => {
                     </button>
                     {adminMenuOpen && (
                       <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-2 z-50">
+                        <Link
+                          to="/profile"
+                          className="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                          onClick={() => setAdminMenuOpen(false)}
+                        >
+                          Profile
+                        </Link>
                         <Link
                           to="/admin/login"
                           className="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
@@ -223,18 +233,18 @@ const Navbar = () => {
                     {t('nav.dashboard')}
                   </Link>
                   <Link
-                    to="/meal-planner"
+                    to="/meal-plan"
                     className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 font-medium py-2"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     {t('nav.mealPlanner')}
                   </Link>
                   <Link
-                    to="/tracker"
+                    to="/daily-tracker"
                     className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 font-medium py-2"
                     onClick={() => setMobileMenuOpen(false)}
                   >
-                    {t('nav.tracker')}
+                    {t('nav.dailyTracker')}
                   </Link>
                   <Link
                     to="/recipes"

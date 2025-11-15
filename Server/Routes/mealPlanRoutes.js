@@ -5,6 +5,7 @@ const {
   getMealPlan,
   generateMealPlan,
   createMealPlan,
+  sendMealPlanEmail,
 } = require('../Controllers/mealPlanController');
 const { protect } = require('../Middlewares/auth');
 
@@ -14,6 +15,7 @@ router.get('/', getMealPlans);
 router.post('/generate', generateMealPlan);
 router.get('/:id', getMealPlan);
 router.post('/', createMealPlan);
+router.post('/:id/email', sendMealPlanEmail);
 
 module.exports = router;
 

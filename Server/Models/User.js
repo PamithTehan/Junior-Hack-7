@@ -100,6 +100,15 @@ const userSchema = new mongoose.Schema({
     type: String,
     enum: ['vegan', 'vegetarian', 'non-vegetarian'],
   }],
+  // Manual nutrition goals set by user in Daily Tracker
+  manualNutritionGoals: {
+    calories: { type: Number },
+    protein: { type: Number },
+    carbs: { type: Number },
+    fat: { type: Number },
+    fiber: { type: Number },
+    useManual: { type: Boolean, default: false }, // Flag to indicate if manual goals should be used
+  },
 }, {
   timestamps: true,
 });

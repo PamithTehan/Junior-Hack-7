@@ -4,7 +4,12 @@ const mealItemSchema = new mongoose.Schema({
   foodId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Ingredient',
-    required: true,
+    required: false,
+  },
+  recipeId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Recipe',
+    required: false,
   },
   foodName: { type: String, required: true },
   quantity: { type: Number, required: true }, // serving size multiplier
@@ -14,6 +19,10 @@ const mealItemSchema = new mongoose.Schema({
     carbs: Number,
     fat: Number,
   },
+  // Recipe-specific fields
+  recipeName: { type: String },
+  recipeInstructions: { type: String },
+  recipeIngredients: [{ type: String }],
 }, { _id: false });
 
 const mealSchema = new mongoose.Schema({

@@ -6,6 +6,12 @@ const {
   addFood,
   addScannedFood,
   removeFood,
+  addRecipe,
+  addManualEntry,
+  finalizeMeal,
+  getNutritionGoals,
+  saveNutritionGoals,
+  clearNutritionGoals,
 } = require('../Controllers/trackingController');
 const { protect } = require('../Middlewares/auth');
 
@@ -27,8 +33,14 @@ router.use((req, res, next) => {
 router.use(protect);
 
 router.get('/', getDailyIntakes);
+router.get('/goals', getNutritionGoals);
+router.post('/goals', saveNutritionGoals);
+router.delete('/goals', clearNutritionGoals);
 router.post('/', addFood);
 router.post('/scan', addScannedFood);
+router.post('/recipe', addRecipe);
+router.post('/manual', addManualEntry);
+router.post('/finalize-meal', finalizeMeal);
 // DELETE route - use query parameter to avoid route conflicts
 router.delete('/food', removeFood);
 router.get('/:date', getDailyIntake);

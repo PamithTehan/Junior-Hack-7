@@ -5,7 +5,7 @@ const Recipe = require('../Models/Recipe');
 // @access  Public
 exports.getRecipes = async (req, res) => {
   try {
-    const { search, dietaryType, page = 1, limit = 20 } = req.query;
+    const { search, dietaryType, tag, nutritionFilter, page = 1, limit = 20 } = req.query;
     const query = {};
 
     // Filter out street foods - exclude recipes with street food tags
@@ -26,6 +26,45 @@ exports.getRecipes = async (req, res) => {
       query.dietaryType = dietaryType;
     }
 
+    // Tag filter
+    if (tag && tag.trim() !== '') {
+      andConditions.push({
+        tags: { $in: [new RegExp(tag.trim(), 'i')] }
+      });
+    }
+
+    // Nutrition-based filter
+    if (nutritionFilter) {
+      switch (nutritionFilter) {
+        case 'low-calorie':
+          query['nutrition.calories'] = { $lt: 200 };
+          break;
+        case 'high-protein':
+          query['nutrition.proteins'] = { $gt: 15 };
+          break;
+        case 'low-carb':
+          query['nutrition.carbohydrates'] = { $lt: 30 };
+          break;
+        case 'high-fiber':
+          query['nutrition.fiber'] = { $gt: 5 };
+          break;
+        case 'low-fat':
+          query['nutrition.fat'] = { $lt: 10 };
+          break;
+        case 'balanced':
+          // Balanced: moderate calories (150-400), good protein (10-25g)
+          andConditions.push({
+            $and: [
+              { 'nutrition.calories': { $gte: 150, $lte: 400 } },
+              { 'nutrition.proteins': { $gte: 10, $lte: 25 } }
+            ]
+          });
+          break;
+        default:
+          break;
+      }
+    }
+
     // Search filter
     if (search) {
       andConditions.push({
@@ -38,7 +77,10 @@ exports.getRecipes = async (req, res) => {
 
     // Combine all conditions with $and
     if (andConditions.length > 0) {
-      query.$and = andConditions;
+      if (!query.$and) {
+        query.$and = [];
+      }
+      query.$and.push(...andConditions);
     }
 
     const skip = (parseInt(page) - 1) * parseInt(limit);

@@ -5,11 +5,13 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 export const fetchRecipes = createAsyncThunk(
   'recipe/fetchRecipes',
-  async ({ search, dietaryType, page = 1, limit = 20 }, { rejectWithValue }) => {
+  async ({ search, dietaryType, tag, nutritionFilter, page = 1, limit = 20 }, { rejectWithValue }) => {
     try {
       const params = { page, limit };
       if (search) params.search = search;
       if (dietaryType) params.dietaryType = dietaryType;
+      if (tag) params.tag = tag;
+      if (nutritionFilter) params.nutritionFilter = nutritionFilter;
 
       const response = await axios.get(`${API_URL}/recipes`, { params });
       return response.data;

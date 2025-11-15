@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useForm } from 'react-hook-form';
+import { Link, useNavigate } from 'react-router-dom';
 import { getMe } from '../store/slices/authSlice';
 import { updateProfile } from '../store/slices/userSlice';
 import {
@@ -11,6 +12,7 @@ import {
 
 const Profile = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
   const { loading, error } = useSelector((state) => state.user);
   const { register, handleSubmit, reset, watch } = useForm();
@@ -73,10 +75,30 @@ const Profile = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
-        <h1 className="text-4xl font-bold text-gray-800 mb-2">Profile Settings</h1>
-        <p className="text-gray-600">
-          Update your health profile to get personalized meal plans and recommendations
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl font-bold text-gray-800 dark:text-gray-100 mb-2">Profile Settings</h1>
+            <p className="text-gray-600 dark:text-gray-400">
+              Update your health profile information. Set daily nutrition limits in the Daily Tracker tab.
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <Link
+              to="/daily-tracker"
+              className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2"
+            >
+              <span>📊</span>
+              Daily Tracker
+            </Link>
+            <Link
+              to="/meal-plan"
+              className="bg-primary-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-primary-700 transition-colors flex items-center gap-2"
+            >
+              <span>📅</span>
+              Meal Planner
+            </Link>
+          </div>
+        </div>
       </div>
 
       {success && (
@@ -93,8 +115,14 @@ const Profile = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Profile Form */}
-        <div className="lg:col-span-2 bg-white rounded-lg shadow-md p-8">
-          <h2 className="text-2xl font-bold text-gray-800 mb-6">Personal Information</h2>
+        <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-lg shadow-md p-8">
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-6">Personal Information</h2>
+          
+          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-6">
+            <p className="text-sm text-yellow-800 dark:text-yellow-200">
+              <strong>Note:</strong> Daily calorie and nutrition limits should be set in the <Link to="/daily-tracker" className="underline font-semibold">Daily Tracker</Link> tab, not here. This profile is for health information only.
+            </p>
+          </div>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             {/* Basic Info */}
             <div>
@@ -213,57 +241,101 @@ const Profile = () => {
         </div>
 
         {/* Profile Summary */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">Profile Summary</h2>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-4">Profile Summary</h2>
+          
+          {/* User Info Card */}
+          <div className="bg-gradient-to-br from-primary-500 to-primary-600 text-white p-4 rounded-lg mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center text-2xl font-bold">
+                {user?.name?.charAt(0).toUpperCase() || 'U'}
+              </div>
+              <div>
+                <p className="font-bold text-lg">{user?.name || 'User'}</p>
+                <p className="text-sm opacity-90">{user?.email}</p>
+              </div>
+            </div>
+          </div>
           {user?.healthProfile ? (
             <div className="space-y-4">
-              <div>
-                <span className="text-gray-600">BMI:</span>
-                <span className="font-semibold ml-2 text-lg">
-                  {user.healthProfile.bmi ? user.healthProfile.bmi.toFixed(1) : 'Calculate by entering weight & height'}
-                </span>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
+                  <span className="text-gray-600 dark:text-gray-400 text-sm block mb-1">BMI</span>
+                  <span className="font-bold text-lg text-gray-800 dark:text-gray-100">
+                    {user.healthProfile.bmi ? user.healthProfile.bmi.toFixed(1) : 'N/A'}
+                  </span>
+                </div>
+                <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
+                  <span className="text-gray-600 dark:text-gray-400 text-sm block mb-1">Age</span>
+                  <span className="font-bold text-lg text-gray-800 dark:text-gray-100">
+                    {user.dateOfBirth ? (() => {
+                      const today = new Date();
+                      const birthDate = new Date(user.dateOfBirth);
+                      let age = today.getFullYear() - birthDate.getFullYear();
+                      const monthDiff = today.getMonth() - birthDate.getMonth();
+                      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                        age--;
+                      }
+                      return `${age}`;
+                    })() : user.healthProfile.age ? `${user.healthProfile.age}` : 'N/A'}
+                  </span>
+                </div>
               </div>
-              <div>
-                <span className="text-gray-600">Weight:</span>
-                <span className="font-semibold ml-2">
-                  {user.healthProfile.weight || 'N/A'} kg
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-600">Height:</span>
-                <span className="font-semibold ml-2">
-                  {user.healthProfile.height || 'N/A'} cm
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-600">Age:</span>
-                <span className="font-semibold ml-2">
-                  {user.dateOfBirth ? (() => {
-                    const today = new Date();
-                    const birthDate = new Date(user.dateOfBirth);
-                    let age = today.getFullYear() - birthDate.getFullYear();
-                    const monthDiff = today.getMonth() - birthDate.getMonth();
-                    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-                      age--;
-                    }
-                    return `${age} years`;
-                  })() : user.healthProfile.age ? `${user.healthProfile.age} years` : 'N/A'}
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-600">Activity Level:</span>
-                <span className="font-semibold ml-2 capitalize">
-                  {user.healthProfile.activityLevel || 'N/A'}
-                </span>
+              
+              <div className="space-y-2">
+                <div className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
+                  <span className="text-gray-600 dark:text-gray-400">Weight:</span>
+                  <span className="font-semibold text-gray-800 dark:text-gray-100">
+                    {user.healthProfile.weight || 'N/A'} kg
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
+                  <span className="text-gray-600 dark:text-gray-400">Height:</span>
+                  <span className="font-semibold text-gray-800 dark:text-gray-100">
+                    {user.healthProfile.height || 'N/A'} cm
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
+                  <span className="text-gray-600 dark:text-gray-400">Activity Level:</span>
+                  <span className="font-semibold text-gray-800 dark:text-gray-100 capitalize">
+                    {user.healthProfile.activityLevel || 'N/A'}
+                  </span>
+                </div>
               </div>
               {user.healthProfile.dailyCalorieGoal && (
                 <div className="bg-primary-50 p-4 rounded-lg mt-4">
-                  <span className="text-gray-600">Daily Calorie Goal:</span>
-                  <span className="font-bold ml-2 text-primary-600 text-lg">
-                    {user.healthProfile.dailyCalorieGoal} kcal
-                  </span>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-gray-600">Estimated Daily Calorie Goal:</span>
+                      <span className="font-bold ml-2 text-primary-600 text-lg">
+                        {user.healthProfile.dailyCalorieGoal} kcal
+                      </span>
+                      <p className="text-xs text-gray-500 mt-1">
+                        (Calculated from your profile)
+                      </p>
+                    </div>
+                  </div>
                 </div>
               )}
+              <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg mt-4">
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl">💡</span>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-blue-800 mb-1">
+                      Set Your Daily Nutrition Limits
+                    </p>
+                    <p className="text-xs text-blue-700 mb-2">
+                      To customize your daily calorie and nutrition goals, go to the Daily Tracker tab and click "Set Daily Limits".
+                    </p>
+                    <Link
+                      to="/daily-tracker"
+                      className="inline-block bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors"
+                    >
+                      Go to Daily Tracker →
+                    </Link>
+                  </div>
+                </div>
+              </div>
               {user.healthProfile.healthConditions?.length > 0 && (
                 <div className="mt-4">
                   <p className="text-gray-600 mb-2">Health Conditions:</p>

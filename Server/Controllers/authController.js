@@ -396,7 +396,11 @@ exports.updateProfile = async (req, res) => {
     const fieldsToUpdate = {};
 
     if (name) fieldsToUpdate.name = name;
-    if (healthProfile) fieldsToUpdate.healthProfile = healthProfile;
+    if (healthProfile) {
+      // Remove dailyCalorieGoal from healthProfile if present - it should only be calculated, not set directly
+      const { dailyCalorieGoal, ...healthProfileWithoutCalories } = healthProfile;
+      fieldsToUpdate.healthProfile = healthProfileWithoutCalories;
+    }
 
     const user = await User.findByIdAndUpdate(
       req.user.id,

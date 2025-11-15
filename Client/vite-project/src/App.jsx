@@ -15,6 +15,7 @@ import Dashboard from './Pages/Dashboard';
 import FoodDatabase from './Pages/FoodDatabase';
 import MealPlanner from './Pages/MealPlanner';
 import FoodTracker from './Pages/FoodTracker';
+import DailyTracker from './Pages/DailyTracker';
 import Recipes from './Pages/Recipes';
 import Awareness from './Pages/Awareness';
 import Profile from './Pages/Profile';
@@ -76,18 +77,32 @@ function App() {
               }
             />
             <Route
-              path="/meal-planner"
+              path="/meal-plan"
               element={
                 <ProtectedRoute>
                   <MealPlanner />
                 </ProtectedRoute>
               }
             />
+            {/* Redirect old /meal-planner to /meal-plan */}
+            <Route
+              path="/meal-planner"
+              element={<Navigate to="/meal-plan" replace />}
+            />
+            <Route
+              path="/daily-tracker"
+              element={
+                <ProtectedRoute>
+                  <DailyTracker />
+                </ProtectedRoute>
+              }
+            />
+            {/* Redirect old /tracker to /daily-tracker */}
             <Route
               path="/tracker"
               element={
                 <ProtectedRoute>
-                  <FoodTracker />
+                  <DailyTracker />
                 </ProtectedRoute>
               }
             />
