@@ -9,7 +9,7 @@ import {
   YES_NO_OPTIONS,
   DIETARY_PREFERENCE_OPTIONS,
 } from '../../constants/formOptions';
-import { generateUniqueEmail } from '../../utils/testHelpers';
+import { generateUniqueEmail } from '../../Utils/testHelpers';
 
 const Register = () => {
   const navigate = useNavigate();
