@@ -113,15 +113,31 @@ export const removeFoodFromIntake = createAsyncThunk(
   'meal/removeFoodFromIntake',
   async ({ intakeId, foodItemId }, { rejectWithValue }) => {
     try {
+      // Ensure both IDs are strings
+      const intakeIdStr = String(intakeId);
+      const foodItemIdStr = String(foodItemId);
+      
       // Build URL with query parameters manually for DELETE requests
-      const url = `${API_URL}/tracking/food?intakeId=${encodeURIComponent(intakeId)}&foodItemId=${encodeURIComponent(foodItemId)}`;
-      console.log('DELETE request URL:', url);
+      const url = `${API_URL}/tracking/food?intakeId=${encodeURIComponent(intakeIdStr)}&foodItemId=${encodeURIComponent(foodItemIdStr)}`;
+      console.log('DELETE request:', { intakeId: intakeIdStr, foodItemId: foodItemIdStr, url });
+      
       const response = await axios.delete(url);
+      
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Failed to remove food');
+      }
+      
       return response.data.data;
     } catch (error) {
-      console.error('DELETE error:', error.response?.data || error.message);
+      console.error('DELETE error:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        intakeId,
+        foodItemId,
+      });
       return rejectWithValue(
-        error.response?.data?.message || 'Failed to remove food'
+        error.response?.data?.message || error.message || 'Failed to remove food from intake'
       );
     }
   }

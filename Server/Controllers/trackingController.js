@@ -370,32 +370,68 @@ exports.removeFood = async (req, res) => {
     // Get the subdocument ID to remove it properly
     const foodItemIdToRemove = foodItem._id ? String(foodItem._id) : foodItemId;
     
-    // Subtract nutrition
-    intake.totalNutrition.calories -= foodItem.nutrition.calories || 0;
-    intake.totalNutrition.protein -= foodItem.nutrition.protein || 0;
-    intake.totalNutrition.carbs -= foodItem.nutrition.carbs || 0;
-    intake.totalNutrition.fat -= foodItem.nutrition.fat || 0;
-    intake.totalCalories = intake.totalNutrition.calories;
-
+    // Store nutrition values before removal for subtraction
+    const nutritionToRemove = {
+      calories: foodItem.nutrition?.calories || 0,
+      protein: foodItem.nutrition?.protein || 0,
+      carbs: foodItem.nutrition?.carbs || 0,
+      fat: foodItem.nutrition?.fat || 0,
+      fiber: foodItem.nutrition?.fiber || 0,
+    };
+    
     // Remove food item using Mongoose subdocument methods
     // Try to get the subdocument by ID first (this returns a Mongoose subdocument with remove method)
-    const subdocToRemove = intake.foods.id(foodItemIdToRemove);
-    if (subdocToRemove) {
-      subdocToRemove.remove();
-    } else {
-      // Fallback: find index and use splice
+    let removed = false;
+    try {
+      const subdocToRemove = intake.foods.id(foodItemIdToRemove);
+      if (subdocToRemove) {
+        subdocToRemove.remove();
+        removed = true;
+      }
+    } catch (idError) {
+      console.log('Error using id() method:', idError.message);
+    }
+    
+    // Fallback: find index and use splice
+    if (!removed) {
       const index = intake.foods.findIndex(
         (f) => (f._id && String(f._id) === foodItemIdToRemove) ||
                (f.foodId && String(f.foodId) === foodItemIdToRemove)
       );
       if (index !== -1) {
         intake.foods.splice(index, 1);
-      } else {
-        return res.status(404).json({
-          success: false,
-          message: 'Could not remove food item from intake',
-        });
+        removed = true;
       }
+    }
+    
+    if (!removed) {
+      console.error('Could not remove food item. Available foods:', 
+        intake.foods.map(f => ({
+          _id: String(f._id),
+          foodId: f.foodId ? String(f.foodId) : null,
+          foodName: f.foodName
+        }))
+      );
+      return res.status(404).json({
+        success: false,
+        message: 'Could not remove food item from intake',
+        debug: {
+          foodItemIdToRemove,
+          availableIds: intake.foods.map(f => String(f._id)),
+        },
+      });
+    }
+    
+    // Subtract nutrition (ensure values don't go negative)
+    if (intake.totalNutrition) {
+      intake.totalNutrition.calories = Math.max(0, (intake.totalNutrition.calories || 0) - nutritionToRemove.calories);
+      intake.totalNutrition.protein = Math.max(0, (intake.totalNutrition.protein || 0) - nutritionToRemove.protein);
+      intake.totalNutrition.carbs = Math.max(0, (intake.totalNutrition.carbs || 0) - nutritionToRemove.carbs);
+      intake.totalNutrition.fat = Math.max(0, (intake.totalNutrition.fat || 0) - nutritionToRemove.fat);
+      if (intake.totalNutrition.fiber !== undefined) {
+        intake.totalNutrition.fiber = Math.max(0, (intake.totalNutrition.fiber || 0) - nutritionToRemove.fiber);
+      }
+      intake.totalCalories = intake.totalNutrition.calories;
     }
     
     await intake.save();
@@ -417,10 +453,17 @@ exports.removeFood = async (req, res) => {
       data: populatedIntake,
     });
   } catch (error) {
+    console.error('Error in removeFood:', {
+      error: error.message,
+      stack: error.stack,
+      intakeId: req.query.intakeId,
+      foodItemId: req.query.foodItemId,
+      userId: req.user.id,
+    });
     res.status(500).json({
       success: false,
       message: 'Error removing food from intake',
-      error: error.message,
+      error: process.env.NODE_ENV === 'development' ? error.message : 'An error occurred while removing the food item',
     });
   }
 };
