@@ -163,67 +163,87 @@ const Navbar = () => {
                         e.stopPropagation();
                         setAdminMenuOpen(!adminMenuOpen);
                       }}
-                      className="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                      className={`flex items-center space-x-2 px-3 py-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 ${
+                        adminMenuOpen ? 'bg-gray-100 dark:bg-gray-800' : ''
+                      }`}
                     >
-                      <div className="w-8 h-8 bg-gradient-to-br from-primary-400 to-primary-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                      <div className="w-9 h-9 bg-gradient-to-br from-primary-500 via-primary-600 to-primary-700 rounded-full flex items-center justify-center text-white font-semibold text-sm shadow-lg ring-2 ring-primary-200 dark:ring-primary-800 ring-offset-2 ring-offset-white dark:ring-offset-gray-900">
                         {(() => {
                           const userName = user?.name || (user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.firstName || user?.lastName || 'User');
                           return userName.charAt(0).toUpperCase();
                         })()}
                       </div>
-                      <span className="hidden xl:block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      <span className="hidden xl:block text-sm font-semibold text-gray-700 dark:text-gray-200">
                         {(() => {
                           const userName = user?.name || (user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.firstName || user?.lastName || 'User');
                           return userName.split(' ')[0];
                         })()}
                       </span>
-                      <FiChevronDown className={`text-gray-500 transition-transform ${adminMenuOpen ? 'rotate-180' : ''}`} />
+                      <FiChevronDown className={`text-gray-500 dark:text-gray-400 transition-all duration-300 ${adminMenuOpen ? 'rotate-180' : ''}`} />
                     </button>
                     {adminMenuOpen && (
                       <>
                         <div 
-                          className="fixed inset-0 z-[45]"
+                          className="fixed inset-0 z-[45] bg-black/20 backdrop-blur-sm animate-in fade-in duration-200"
                           onClick={() => setAdminMenuOpen(false)}
                         ></div>
-                        <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 py-2 z-[50] overflow-hidden">
-                          <Link
-                            to="/profile"
-                            className="flex items-center space-x-3 px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setAdminMenuOpen(false);
-                              navigate('/profile');
-                            }}
-                          >
-                            <FiUser className="text-lg" />
-                            <span>Profile</span>
-                          </Link>
-                          <Link
-                            to="/admin/login"
-                            className="flex items-center space-x-3 px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setAdminMenuOpen(false);
-                              navigate('/admin/login');
-                            }}
-                          >
-                            <FiShield className="text-lg" />
-                            <span>Administration</span>
-                          </Link>
-                          <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setAdminMenuOpen(false);
-                              handleLogout();
-                            }}
-                            className="w-full flex items-center space-x-3 px-4 py-3 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                          >
-                            <FiLogOut className="text-lg" />
-                            <span>{t('nav.logout')}</span>
-                          </button>
+                        <div className="absolute right-0 mt-3 w-64 bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 py-2 z-[50] overflow-hidden animate-in slide-in-from-top-2 fade-in duration-200">
+                          <div className="px-4 py-3 border-b border-gray-200/50 dark:border-gray-700/50">
+                            <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Account</p>
+                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                              {(() => {
+                                const userName = user?.name || (user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.firstName || user?.lastName || 'User');
+                                return userName;
+                              })()}
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user?.email}</p>
+                          </div>
+                          <div className="py-1">
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setAdminMenuOpen(false);
+                                navigate('/profile');
+                              }}
+                              className="w-full flex items-center space-x-3 px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-primary-50 hover:to-primary-100/50 dark:hover:from-primary-900/20 dark:hover:to-primary-800/20 transition-all duration-200 group"
+                            >
+                              <div className="p-1.5 rounded-lg bg-primary-100 dark:bg-primary-900/30 group-hover:bg-primary-200 dark:group-hover:bg-primary-800/50 transition-colors">
+                                <FiUser className="text-lg text-primary-600 dark:text-primary-400" />
+                              </div>
+                              <span className="font-medium">Profile</span>
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setAdminMenuOpen(false);
+                                navigate('/admin/login');
+                              }}
+                              className="w-full flex items-center space-x-3 px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100/50 dark:hover:from-gray-700/20 dark:hover:to-gray-600/20 transition-all duration-200 group"
+                            >
+                              <div className="p-1.5 rounded-lg bg-gray-100 dark:bg-gray-700/30 group-hover:bg-gray-200 dark:group-hover:bg-gray-600/50 transition-colors">
+                                <FiShield className="text-lg text-gray-600 dark:text-gray-400" />
+                              </div>
+                              <span className="font-medium">Administration</span>
+                            </button>
+                          </div>
+                          <div className="border-t border-gray-200/50 dark:border-gray-700/50 my-1"></div>
+                          <div className="py-1">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setAdminMenuOpen(false);
+                                handleLogout();
+                              }}
+                              className="w-full flex items-center space-x-3 px-4 py-3 text-red-600 dark:text-red-400 hover:bg-gradient-to-r hover:from-red-50 hover:to-red-100/50 dark:hover:from-red-900/20 dark:hover:to-red-800/20 transition-all duration-200 group"
+                            >
+                              <div className="p-1.5 rounded-lg bg-red-100 dark:bg-red-900/30 group-hover:bg-red-200 dark:group-hover:bg-red-800/50 transition-colors">
+                                <FiLogOut className="text-lg" />
+                              </div>
+                              <span className="font-medium">{t('nav.logout')}</span>
+                            </button>
+                          </div>
                         </div>
                       </>
                     )}
@@ -410,22 +430,23 @@ const Navbar = () => {
                     <span>{t('nav.scan')}</span>
                   </Link>
                   <div className="border-t border-gray-200 dark:border-gray-700 my-2"></div>
-                  <Link
-                    to="/profile"
-                    className={`flex items-center space-x-3 px-4 py-3 rounded-lg font-medium transition-colors ${
-                      isActive('/profile')
-                        ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-                    }`}
+                  <button
                     onClick={(e) => {
                       e.preventDefault();
                       setMobileMenuOpen(false);
                       navigate('/profile');
                     }}
+                    className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-semibold transition-all duration-200 ${
+                      isActive('/profile')
+                        ? 'bg-gradient-to-r from-primary-100 to-primary-50 dark:from-primary-900/30 dark:to-primary-800/20 text-primary-600 dark:text-primary-400 shadow-md'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-gray-100 hover:to-gray-50 dark:hover:from-gray-800 dark:hover:to-gray-700'
+                    }`}
                   >
-                    <FiUser className="text-xl" />
+                    <div className={`p-2 rounded-lg ${isActive('/profile') ? 'bg-primary-200 dark:bg-primary-800/50' : 'bg-gray-100 dark:bg-gray-700'}`}>
+                      <FiUser className="text-xl" />
+                    </div>
                     <span>Profile</span>
-                  </Link>
+                  </button>
                   <Link
                     to="/admin/login"
                     className="flex items-center space-x-3 px-4 py-3 rounded-lg font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
