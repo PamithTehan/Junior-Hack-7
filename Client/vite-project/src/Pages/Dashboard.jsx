@@ -7,6 +7,39 @@ import { useTranslation } from '../Hooks/useTranslation';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { format } from 'date-fns';
 import axios from 'axios';
+import { 
+  FiActivity, 
+  FiTrendingUp, 
+  FiCoffee, 
+  FiSun, 
+  FiMoon, 
+  FiApple,
+  FiUser,
+  FiBookOpen,
+  FiCamera,
+  FiCalendar,
+  FiBarChart2
+} from 'react-icons/fi';
+import { 
+  HiOutlineSparkles,
+  HiOutlineUserGroup,
+  HiOutlineBookOpen
+} from 'react-icons/hi';
+import { 
+  MdRestaurant,
+  MdLocalDining,
+  MdChefHat,
+  MdHealthAndSafety
+} from 'react-icons/md';
+import { 
+  GiFruitBowl,
+  GiBreadSlice,
+  GiAvocado
+} from 'react-icons/gi';
+import { 
+  FaFire,
+  FaDumbbell
+} from 'react-icons/fa';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -84,10 +117,10 @@ const Dashboard = () => {
 
   // Get today's meals summary
   const mealTypes = [
-    { id: 'breakfast', label: 'Breakfast', icon: '🌅', color: 'orange' },
-    { id: 'lunch', label: 'Lunch', icon: '🍛', color: 'yellow' },
-    { id: 'dinner', label: 'Dinner', icon: '🌙', color: 'purple' },
-    { id: 'snack', label: 'Snack', icon: '🍎', color: 'green' },
+    { id: 'breakfast', label: 'Breakfast', icon: FiCoffee, color: 'orange' },
+    { id: 'lunch', label: 'Lunch', icon: MdLocalDining, color: 'yellow' },
+    { id: 'dinner', label: 'Dinner', icon: FiMoon, color: 'purple' },
+    { id: 'snack', label: 'Snack', icon: FiApple, color: 'green' },
   ];
 
   const foodsByMeal = mealTypes.reduce((acc, meal) => {
@@ -100,7 +133,7 @@ const Dashboard = () => {
     {
       title: 'Daily Tracker',
       description: 'Track your daily nutrition intake and meals',
-      icon: '📊',
+      icon: FiBarChart2,
       link: '/daily-tracker',
       gradient: 'from-blue-500 to-cyan-500',
       color: 'blue',
@@ -108,7 +141,7 @@ const Dashboard = () => {
     {
       title: 'Food Database',
       description: 'Browse healthy Sri Lankan recipes',
-      icon: '🍛',
+      icon: MdRestaurant,
       link: '/foods',
       gradient: 'from-green-500 to-emerald-500',
       color: 'green',
@@ -116,15 +149,15 @@ const Dashboard = () => {
     {
       title: 'Meal Planner',
       description: 'Generate personalized meal plans',
-      icon: '📅',
-      link: '/meal-plan',
+      icon: FiCalendar,
+      link: '/meal-planner',
       gradient: 'from-purple-500 to-pink-500',
       color: 'purple',
     },
     {
       title: 'Recipes',
       description: 'Explore traditional recipes',
-      icon: '👨‍🍳',
+      icon: MdChefHat,
       link: '/recipes',
       gradient: 'from-orange-500 to-red-500',
       color: 'orange',
@@ -132,7 +165,7 @@ const Dashboard = () => {
     {
       title: 'Scan Food',
       description: 'Scan and identify food items',
-      icon: '📷',
+      icon: FiCamera,
       link: '/scan',
       gradient: 'from-indigo-500 to-blue-500',
       color: 'indigo',
@@ -140,7 +173,7 @@ const Dashboard = () => {
     {
       title: 'Meet Expert',
       description: 'Connect with nutrition experts',
-      icon: '👨‍⚕️',
+      icon: HiOutlineUserGroup,
       link: '/meet-expert',
       gradient: 'from-teal-500 to-cyan-500',
       color: 'teal',
@@ -148,7 +181,7 @@ const Dashboard = () => {
     {
       title: 'Awareness',
       description: 'Learn about nutrition and health',
-      icon: '📚',
+      icon: HiOutlineBookOpen,
       link: '/awareness',
       gradient: 'from-pink-500 to-rose-500',
       color: 'pink',
@@ -156,7 +189,7 @@ const Dashboard = () => {
     {
       title: 'Profile',
       description: 'Manage your health profile',
-      icon: '👤',
+      icon: FiUser,
       link: '/profile',
       gradient: 'from-gray-600 to-gray-800',
       color: 'gray',
@@ -184,13 +217,13 @@ const Dashboard = () => {
             <div className="flex items-center justify-between flex-wrap gap-4">
               <div>
                 <h1 className="text-3xl md:text-5xl font-bold mb-2">
-                  Welcome back, {user?.name || 'User'}! 👋
+                  Welcome back, {user?.name || 'User'}!
                 </h1>
                 <p className="text-primary-100 text-lg">
                   {format(new Date(), 'EEEE, MMMM d, yyyy')}
                 </p>
               </div>
-              <div className="text-6xl md:text-7xl opacity-20">🍛</div>
+              <MdRestaurant className="text-6xl md:text-7xl opacity-20" />
             </div>
           </div>
 
@@ -214,7 +247,7 @@ const Dashboard = () => {
                 </p>
                 <p className="text-sm text-gray-500 dark:text-gray-400">of {dailyGoal} kcal</p>
               </div>
-              <div className="text-4xl">🔥</div>
+              <FaFire className="text-4xl text-red-500" />
             </div>
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
               <div
@@ -238,7 +271,7 @@ const Dashboard = () => {
                 </p>
                 <p className="text-sm text-gray-500 dark:text-gray-400">of {proteinGoal}g goal</p>
               </div>
-              <div className="text-4xl">💪</div>
+              <FaDumbbell className="text-4xl text-blue-500" />
             </div>
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
               <div
@@ -260,7 +293,7 @@ const Dashboard = () => {
                 </p>
                 <p className="text-sm text-gray-500 dark:text-gray-400">of {carbsGoal}g goal</p>
               </div>
-              <div className="text-4xl">🍞</div>
+              <GiBreadSlice className="text-4xl text-orange-500" />
             </div>
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
               <div
@@ -282,7 +315,7 @@ const Dashboard = () => {
                 </p>
                 <p className="text-sm text-gray-500 dark:text-gray-400">of {fatGoal}g goal</p>
               </div>
-              <div className="text-4xl">🥑</div>
+              <GiAvocado className="text-4xl text-purple-500" />
             </div>
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
               <div
@@ -329,7 +362,7 @@ const Dashboard = () => {
                   >
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <span className="text-2xl">{meal.icon}</span>
+                        {meal.icon && <meal.icon className="text-2xl text-gray-700 dark:text-gray-300" />}
                         <h3 className="font-semibold text-gray-800 dark:text-gray-100">{meal.label}</h3>
                       </div>
                       <span className="text-sm font-bold text-gray-700 dark:text-gray-300">
@@ -403,7 +436,7 @@ const Dashboard = () => {
               </div>
             ) : (
               <div className="text-center py-6">
-                <div className="text-4xl mb-3">👤</div>
+                <FiUser className="text-4xl mb-3 text-gray-400" />
                 <p className="text-gray-600 dark:text-gray-400 mb-4 text-sm">
                   Complete your profile to get personalized recommendations
                 </p>
@@ -441,7 +474,7 @@ const Dashboard = () => {
             </ResponsiveContainer>
           ) : (
             <div className="flex flex-col items-center justify-center h-64 text-gray-500 dark:text-gray-400">
-              <div className="text-6xl mb-4">📊</div>
+              <FiBarChart2 className="text-6xl mb-4 text-gray-400" />
               <p>No nutrition data available</p>
               <p className="text-sm mt-2">Start tracking your meals to see your nutrition overview</p>
             </div>
@@ -460,8 +493,8 @@ const Dashboard = () => {
                 to={action.link}
                 className="group bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 hover:shadow-xl transition-all transform hover:-translate-y-1 border border-gray-100 dark:border-gray-700"
               >
-                <div className={`w-12 h-12 rounded-xl bg-gradient-to-r ${action.gradient} flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition-transform`}>
-                  {action.icon}
+                <div className={`w-12 h-12 rounded-xl bg-gradient-to-r ${action.gradient} flex items-center justify-center text-white text-2xl mb-4 group-hover:scale-110 transition-transform`}>
+                  {action.icon && <action.icon />}
                 </div>
                 <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-2 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
                   {action.title}
